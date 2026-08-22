@@ -130,44 +130,48 @@ resuelve esto: el string `"457"` no se compara contra nada, se busca tal cual.
 
 ### El fix diseñado — no aplicado
 
-Mismo principio que la sección 1: **no inventar el número correcto** (sumar
-ceros a ojo es alucinar exactamente lo que la regla #2 del SDD prohíbe).
-**Declarar duda cuando la fuente parece truncada**, en vez de forzar certeza.
+**Versión 1 (descartada):** detectar `"457."` seguido de letra o fin de línea
+como firma de corte. Problema real, marcado por el companero al revisar esto:
+el string es genuinamente ambiguo. `"457."` puede ser `457.000` truncado, o
+`457` con un punto decimal suelto del OCR. Reparar o detectar el string no da
+certeza — es tratar de adivinar de nuevo, con otro nombre.
 
-La señal: un monto en este dataset nunca termina en un separador decimal sin
-dígitos después. `"457."` seguido de una palabra o el final de la línea es la
-firma de un número cortado — un monto real termina en `.000`, `,00`, o sigue
-con más dígitos.
+**Versión 2 (la buena, aportada por el companero):** no mirar el string. Mirar
+la construcción del dato.
+
+`gen_dataset.py:281` — `garantia_valor = round(capital_adeudado * cobertura, -3)`.
+**Todo `garantia_valor` de este dataset es múltiplo de 1000 por construcción.**
+`457` no lo es; `457.000` sí. Verificado contra el generador, no asumido.
 
 ```python
-# en riesgo/extraccion.py, junto a _grounding()
+# en riesgo/extraccion.py o calculo.py
 
-_CORTE_SOSPECHOSO = re.compile(r"\d[.,]\s*(?:[A-ZÁÉÍÓÚÑ]|$)")
-
-def _posible_truncado(d: str, pag: str) -> bool:
-    """True si el punto donde aparece `d` en la página termina en un
-    separador decimal sin dígitos detrás -- la firma de un monto que el OCR
-    cortó a mitad de camino.
+def _magnitud_sospechosa(valor: float | None, campo: str) -> bool:
+    """Montos de este dataset (capital_original, capital_adeudado,
+    garantia_valor) son siempre multiplos de 1000. Uno que no lo es
+    delata un OCR que se comio los ceros de miles -- determinista,
+    no depende de adivinar el string.
     """
-    i = digitos(pag).find(d)
-    if i == -1:
+    if valor is None or campo not in ("capital_original", "capital_adeudado",
+                                      "garantia_valor"):
         return False
-    # ubicar el fragmento de texto real (no solo dígitos) alrededor del match
-    # y chequear si termina en "." o "," sin numero despues
-    ...  # implementación exacta pendiente: mapear posición en digitos(pag)
-         # de vuelta a la posición en pag es lo único no trivial acá
+    return valor % 1000 != 0
 ```
 
-Y en `_grounding`, cuando el campo es un monto (`normalizar_monto` en
-`CONVERSORES`) y `_posible_truncado` da `True`: devolver `grounding_ok=True`
-pero marcar el `Campo` con una reserva nueva (no `ocr_confianza`, que ya
-significa otra cosa) — algo como `posible_truncado=True` en `modelo.Campo`,
-que `Campo.confiable` trate igual que `grounding_ok=False`: degrada el caso,
-no fuerza ruteo con ese número.
+Mismo tratamiento que la sección 1: no corrige el número (sumarle ceros a ojo
+es alucinar, la regla #2 del SDD lo prohíbe explícitamente). Marca el `Campo`
+con una reserva que `Campo.confiable` trate igual que `grounding_ok=False`:
+degrada el caso a CON RESERVAS, no fuerza ruteo sobre un número que no puede
+ser el real.
 
-**Alcance:** solo aplica a campos que pasan por `normalizar_monto`
-(`capital_original`, `capital_adeudado`, `garantia_valor`). `cuotas_contrato`
-es un entero chico y truncarlo no tiene el mismo patrón de daño.
+**Alcance:** solo los tres campos monetarios. `cuotas_contrato` es un entero
+chico sin este patrón de construcción.
+
+**Nota de generalización:** esta regla es específica de cómo `gen_dataset.py`
+genera los montos (siempre redondeados a mil). Es la señal correcta para este
+dataset sintético; en documentos reales la magnitud esperada tendría que salir
+de otra fuente (un rango plausible por tipo de campo, no una regla exacta de
+múltiplo).
 
 ### Por qué no se aplica ahora
 
