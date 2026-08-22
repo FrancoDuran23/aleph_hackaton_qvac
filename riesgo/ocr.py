@@ -26,9 +26,26 @@ from pathlib import Path
 
 import pymupdf
 
-from tetherto.qvac_sdk import Client, load_model, ocr_stream
-from tetherto.qvac_sdk.models import OCR_LATIN
-from tetherto.qvac_sdk.schemas import OcrStreamRequest
+# A diferencia de la generación de texto, el OCR NO tiene camino por el bridge
+# HTTP: corre contra el worker Node local del SDK. Import tolerante para que una
+# carpeta sin documentos escaneados siga analizándose en una máquina sin SDK --
+# `leer_documento` sólo importa este módulo cuando encuentra un PDF rasterizado.
+try:
+    from tetherto.qvac_sdk import Client, load_model, ocr_stream
+    from tetherto.qvac_sdk.models import OCR_LATIN
+    from tetherto.qvac_sdk.schemas import OcrStreamRequest
+
+    _FALTA_SDK: str | None = None
+except ImportError as _e:  # pragma: no cover - depende del entorno
+    Client = load_model = ocr_stream = None  # type: ignore[assignment]
+    OCR_LATIN = OcrStreamRequest = None  # type: ignore[assignment]
+    _FALTA_SDK = (
+        f"el OCR necesita el SDK Python de QVAC y no está instalado ({_e}). "
+        "El OCR corre contra un worker Node local, no contra --bridge: "
+        "pip install tetherto-qvac-sdk -f "
+        "https://github.com/tetherto/qvac/releases/expanded_assets/sdk-v0.17.0 "
+        "(requiere Node >=22.17, npm install -g @qvac/sdk y Vulkan >=1.4)."
+    )
 
 # canvasSize es lo que más pesa en CPU: bajarlo de ~2560 (default) a 960 es el
 # grueso del 350s -> 9s, sin perder precisión de campo (medido). nThreads=4:
@@ -142,6 +159,8 @@ _motor = _MotorOCR()
 
 def ocr_pdf(path: str | Path) -> tuple[list[str], list[float]]:
     """Rasteriza cada página del PDF y devuelve (texto_por_página, confianza_por_página)."""
+    if _FALTA_SDK:
+        raise RuntimeError(f"{_FALTA_SDK} (documento: {Path(path).name})")
     doc = pymupdf.open(str(path))
     try:
         imagenes = []

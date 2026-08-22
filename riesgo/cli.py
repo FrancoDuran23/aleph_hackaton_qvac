@@ -1,8 +1,8 @@
 """La CLI. Lo que ve el analista, y lo que se ve en el video.
 
-    riesgo analizar --cliente 4471
-    riesgo analizar --cliente 4471 --json
-    riesgo cartera
+    python -m riesgo.cli analizar --cliente 4421
+    python -m riesgo.cli analizar --cliente 4421 --json
+    python -m riesgo.cli cartera
 
 Todo se imprime dentro de **80 columnas**: si no entra en la terminal, no
 entra en la grabación.

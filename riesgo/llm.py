@@ -29,10 +29,32 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
-from tetherto.qvac_sdk import Client, completion, load_model, unload_model
-from tetherto.qvac_sdk.models import QWEN3_1_7B_INST_Q4
+# El SDK se importa de forma tolerante a propósito.
+#
+# `Motor` (inferencia local) lo necesita, pero `riesgo/bridge.py` sólo toma de
+# este módulo tres cosas puras -- PARAMS_DETERMINISTAS, Respuesta, schema_json --
+# y corre contra un modelo que vive en OTRA máquina. Con el import duro, usar el
+# bridge exigía tener el SDK instalado acá igual: la máquina que no puede correr
+# el modelo tampoco podía hablarle a la que sí. Eso es justamente el caso de uso.
+#
+# Con esto el camino del bridge no depende del SDK, y el camino local falla con
+# un mensaje claro al construir el Motor en vez de romper al importar.
+try:
+    from tetherto.qvac_sdk import Client, completion, load_model, unload_model
+    from tetherto.qvac_sdk.models import QWEN3_1_7B_INST_Q4
 
-MODELO_POR_DEFECTO = QWEN3_1_7B_INST_Q4
+    MODELO_POR_DEFECTO: Any = QWEN3_1_7B_INST_Q4
+    _FALTA_SDK: str | None = None
+except ImportError as _e:  # pragma: no cover - depende del entorno
+    Client = completion = load_model = unload_model = None  # type: ignore[assignment]
+    MODELO_POR_DEFECTO = None
+    _FALTA_SDK = (
+        f"el SDK Python de QVAC no está instalado ({_e}). "
+        "Para inferencia local: pip install tetherto-qvac-sdk -f "
+        "https://github.com/tetherto/qvac/releases/expanded_assets/sdk-v0.17.0 "
+        "(requiere Node >=22.17 y npm install -g @qvac/sdk). "
+        "Para usar un modelo remoto no hace falta: corré con --bridge."
+    )
 CTX_POR_DEFECTO = 4096
 
 # Delegated inference: en vez de cargar el modelo en esta maquina, se delega a
@@ -116,7 +138,9 @@ class Motor:
         provider no responde, asi que matar el provider en vivo no rompe la
         demo: el siguiente caso corre local sin intervencion.
         """
-        self.modelo = modelo
+        if _FALTA_SDK:
+            raise RuntimeError(_FALTA_SDK)
+        self.modelo = modelo if modelo is not None else MODELO_POR_DEFECTO
         self.ctx_size = ctx_size
         self.verboso = verboso
         self.provider = provider

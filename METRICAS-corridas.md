@@ -43,9 +43,16 @@ de CONFIRMADA. Solo una GRAVE **CONFIRMADA** fuerza LEGALES; una PROBABLE no
 fuerza y **degrada el caso a CON RESERVAS** (revisión humana). En documentos
 nativos el comportamiento es idéntico. (`contradicciones.py`, `motor.py`.)
 
-### Resultados
+### Resultados — medido sobre `f7782d4` (merge PR #2)
 
-| | Baseline | **Con fix** |
+> **Estado intermedio, no el número final.** Esta tabla mide el fix de
+> contradicciones y nada más. El Detector B (sección 4) todavía no existía, así
+> que `cliente_4498` sigue acá como confident-wrong. Los números vigentes están
+> en la sección 4 — pero esta corrida se conserva porque el antes/después *es*
+> el argumento: 95% de exactitud con tres confident-wrong adentro no es mejor
+> que 85% con cero.
+
+| | Baseline (pre-`1c5b1e0`) | **Con fix de contradicciones** (`f7782d4`) |
 |---|---|---|
 | **Dev (seed 1, 20 casos)** | | |
 | · Ruteo global | 95% (19/20) | 80% (16/20) |
@@ -95,7 +102,38 @@ El holdout —el test de generalización que nadie vio— sube de 65% a **90%**,
 - Holdout, 2 mal ruteados (`cliente_4470`, `cliente_4533`): contradicción real en
   escritura escaneada → PROBABLE → CON RESERVAS. No se fuerza a LEGALES, se flaguea.
 
-## 4. Validación de montos (Detector A + B) — resultado final
+## 4. Validación de montos (Detector A + B) — medido sobre `a049c96` (merge PR #3)
+
+> **Estos son los números vigentes.** Siguen valiendo en `ed6a26b` (HEAD): ese
+> commit toca sólo `riesgo/cli.py` y es enteramente presentación — decide qué se
+> dibuja, no qué se rutea. No cambia ninguna cifra de esta tabla.
+>
+> **Cómo leer esta tabla contra la de la sección 2.** No discrepan: son hitos
+> consecutivos. El Detector B sacó a `cliente_4498` de FIRME
+> (`LEGALES·FIRME·MAL` → `COBRANZAS·CON RESERVAS·OK`), y eso mueve tres números
+> a la vez, de forma aritméticamente cerrada:
+>
+> ```
+> sale de FIRME        16 → 15      cobertura   80% → 75%
+> precisión FIRME    15/16 → 15/15  desaparece el último confident-wrong
+> rutea bien         16/20 → 17/20  exactitud   80% → 85%
+> ```
+>
+> La exactitud global **sube** al sacar el caso de FIRME porque el 4498 estaba
+> mal ruteado: dejar de afirmarlo lo arregla en los dos ejes.
+>
+> **El holdout no se movió, y eso está medido dos veces.** Las columnas de
+> holdout de la sección 2 y de esta tabla son idénticas — 90% (18/20), 8/8,
+> cobertura 40% — porque el 4498 estaba en dev y el PR #3 no tocó ningún caso
+> del seed 99. Comprobación independiente de las tablas: el Detector B no
+> dispara en ninguno de los 20 casos del holdout, y las coberturas reales van de
+> 0,25 a 1,15 — el caso más cercano al borde está 25× arriba del límite inferior
+> de la banda.
+>
+> Por eso no hace falta re-correr el holdout para sostener sus números, y por eso
+> el hallazgo se cuenta así: el modo de fallo se encontró en dev, se corrigió, y
+> se verificó que el holdout ya estaba limpio. La cifra no subió porque no había
+> nada roto ahí — la diferencia es que ahora está medido, no supuesto.
 
 Sobre el schema de alertas de lectura (`Campo.alerta_lectura`, `Alerta`,
 `Veredicto.alertas`). Detector A (separador de miles roto) + validación de
