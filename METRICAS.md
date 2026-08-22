@@ -18,28 +18,51 @@ una fila nueva — no editar la existente.
 | **Parámetros** | `temp=0`, `top_p=1`, `seed=7`, `reasoning_budget=0` |
 | **Fecha** | 2026-08-22 |
 
-### Comparativa entre modelos
+### Comparativa entre modelos — PENDIENTE, tarea del final
 
 Las métricas de las secciones 3, 4 y 5 son de la lógica y **no dependen del
-modelo**: se calculan sobre el ground truth, sin inferencia. Las que sí cambian
-al cambiar de modelo son las de las secciones 1 y 2.
+modelo**: se calculan sobre el ground truth, sin inferencia. Solo las secciones
+1 y 2 hay que rehacer al cambiar de modelo.
 
-| Modelo | Extracción 5/5 | Latencia 6 campos | tok/s | Determinista |
+⏳ **No correr esto hasta que el pipeline esté estable.** Cada modelo son ~2,5 GB
+de descarga y un rato de setup. Arrancarlo antes deja tres modelos bajados y
+nada funcionando. Es la última media hora, no la primera.
+
+Tres modelos, cada uno responde una pregunta distinta:
+
+| Constante del SDK | Pregunta que responde |
+|---|---|
+| `QWEN3_600M_INST_Q4` | ¿alcanza con el más chico? |
+| `QWEN3_1_7B_INST_Q4` | el candidato |
+| `HEALTHCARE_1_7B_MEDICAL_Q4_K_M` | ¿el fine-tune de dominio degrada fuera de su dominio? |
+
+> El tercero es el interesante: **mismo tamaño y misma familia que el candidato,
+> distinta especialización**. Si degrada, es evidencia de que un fine-tune de
+> dominio transfiere mal — y sobre un modelo del catálogo propio de QVAC. Si no
+> degrada, es un hallazgo más raro todavía.
+>
+> ⚠️ No existe una constante `MedPsy` en el SDK. La familia médica se llama
+> `HEALTHCARE_*`; verificado sobre `tetherto-qvac-sdk 0.17.1`.
+
+**Diseño del experimento, para que sea barato:**
+
+- **5 casos, no 20.** Con 5 se ve la diferencia si es grande; si es chica, 20 tampoco alcanzan.
+- **Solo extracción.** Nada de pipeline completo: campos correctos contra ground truth.
+- **Mismo prompt, misma semilla, `temp=0`.** Cambiar dos cosas a la vez no deja atribuir nada.
+
+| Modelo | Campos correctos | JSON válido | Alucinaciones | seg/caso |
 |---|---|---|---|---|
-| `QWEN3_1_7B_INST_Q4` | ✅ 5/5 | 9,8 s | 17 | ✅ |
 | `QWEN3_600M_INST_Q4` | — | — | — | — |
-| `LLAMA_3_2_1B_INST_Q4_0` | — | — | — | — |
-| `QWEN3_4B_Q4_K_M` | — | — | — | — |
-
-Para agregar una fila:
+| `QWEN3_1_7B_INST_Q4` | — | — | — | — |
+| `HEALTHCARE_1_7B_MEDICAL_Q4_K_M` | — | — | — | — |
 
 ```bash
 QVAC_LLM_MODEL=<constante> .venv/Scripts/python -m riesgo.hito1 --bridge
 ```
 
-⚠️ Los modelos de la familia Qwen3 razonan por defecto. Si se prueba uno que
-**no** sea de razonamiento, `reasoning_budget` no aplica y las cifras de la
-sección 2 no son comparables directamente — anotarlo en la fila.
+⚠️ La familia Qwen3 razona por defecto y por eso usamos `reasoning_budget: 0`.
+Si se prueba un modelo que **no** sea de razonamiento, ese parámetro no aplica y
+las cifras de la sección 2 no son comparables directamente — anotarlo en la fila.
 
 ---
 
