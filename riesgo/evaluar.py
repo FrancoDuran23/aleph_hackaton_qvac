@@ -111,8 +111,46 @@ def barrido_corte(gt: list[dict]) -> None:
         print(f"    ${corte:>9,}    {ok:>2}/{len(filas)}      {legales:>2}/{len(filas)}")
 
 
+def _registro_caso(c: dict, campos: dict, v, ok: bool) -> dict:
+    """Serializa un caso con el CRUDO del OCR por campo, para poder auditarlo.
+
+    Sin el crudo (el string tal como salio del modelo/OCR) no se puede detectar
+    un truncamiento como "ARS 457": el valor normalizado ya perdio la evidencia.
+    """
+    from datetime import date as _date
+
+    def campo_d(campo):
+        valor = campo.valor.isoformat() if isinstance(campo.valor, _date) else campo.valor
+        return {
+            "crudo": campo.crudo,
+            "valor": valor,
+            "pagina": campo.pagina,
+            "grounding_ok": campo.grounding_ok,
+            "ocr_confianza": campo.ocr_confianza,
+            "alerta_lectura": campo.alerta_lectura,
+            "origen": "ocr" if campo.ocr_confianza is not None else "nativo",
+        }
+
+    return {
+        "cliente_id": c["cliente_id"],
+        "carpeta": c["carpeta"],
+        "ruteo": v.ruteo,
+        "ruteo_esperado": c["ruteo_esperado"],
+        "ok": ok,
+        "confianza": v.confianza,
+        "motivo": v.motivo,
+        "derivados": v.derivados,
+        "campos": {n: campo_d(campo) for n, campo in campos.items()},
+        "hallazgos": [{"tipo": h.tipo, "gravedad": h.gravedad, "estado": h.estado}
+                      for h in v.hallazgos],
+        "alertas": [{"campo": a.campo, "crudo_ocr": a.crudo_ocr, "motivo": a.motivo}
+                    for a in v.alertas],
+    }
+
+
 async def evaluar_real(gt: list[dict], corte: float, limite: int | None,
-                       bridge: bool, provider: str | None) -> list[tuple]:
+                       bridge: bool, provider: str | None,
+                       guardar: str | None = None) -> list[tuple]:
     """Extrae con el modelo desde los PDFs y corre el motor sobre eso."""
     from .bridge import MotorBridge
     from .documentos import leer_carpeta
@@ -121,6 +159,7 @@ async def evaluar_real(gt: list[dict], corte: float, limite: int | None,
 
     casos = gt[:limite] if limite else gt
     filas = []
+    registros = []
     motor_ctx = MotorBridge() if bridge else Motor(provider=provider)
     inicio = time.perf_counter()
 
@@ -134,12 +173,20 @@ async def evaluar_real(gt: list[dict], corte: float, limite: int | None,
                          corte=corte, hoy=HOY)
             ok = v.ruteo == c["ruteo_esperado"]
             filas.append((c, v, ok))
+            if guardar is not None:
+                registros.append(_registro_caso(c, campos, v, ok))
             print(f"  {i:>2}/{len(casos)}  {c['carpeta']:<15} "
                   f"{v.ruteo:<15} {v.confianza:<13} {'ok' if ok else 'MAL':<4} "
                   f"{time.perf_counter() - t0:.0f}s")
 
     print(f"\ntotal {(time.perf_counter() - inicio) / 60:.1f} min "
           f"({(time.perf_counter() - inicio) / len(casos):.0f}s por caso)")
+
+    if guardar is not None:
+        Path(guardar).write_text(
+            json.dumps(registros, ensure_ascii=False, indent=2, default=str),
+            encoding="utf-8")
+        print(f"  salidas guardadas en {guardar} ({len(registros)} casos)")
     return filas
 
 
@@ -151,6 +198,8 @@ def main() -> int:
     ap.add_argument("--provider")
     ap.add_argument("--casos", type=int, help="limitar cantidad de casos")
     ap.add_argument("--dataset", default="dataset", help="carpeta del set a evaluar")
+    ap.add_argument("--guardar", help="ruta JSON donde volcar las salidas por caso "
+                                      "(incluye el crudo del OCR, para auditar)")
     args = ap.parse_args()
 
     global DATASET
@@ -165,7 +214,7 @@ def main() -> int:
     if args.real:
         print("EXTRACCION REAL -- el modelo lee los PDFs")
         filas = asyncio.run(evaluar_real(gt, args.corte, args.casos,
-                                         args.bridge, args.provider))
+                                         args.bridge, args.provider, args.guardar))
         _metricas(f"REAL -- extraccion con modelo, corte ${args.corte:,.0f}", filas)
         return 0
 

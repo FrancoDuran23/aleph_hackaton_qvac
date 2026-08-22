@@ -13,6 +13,7 @@ from .calculo import derivar
 from .contradicciones import detectar
 from .modelo import CONFIRMADA, GRAVE, PROBABLE, Advertencia, Alerta, Campo, Veredicto
 from .ruteo import CORTE_DESCUBIERTO, rutear
+from .validacion import cobertura_implausible
 
 
 def _advertencias(campos: dict[str, Campo], influyen: tuple[str, ...],
@@ -93,8 +94,31 @@ def analizar(cliente_id: int, campos: dict[str, Campo], *,
     # a legales por un posible error de lectura.
     graves = [h for h in hallazgos if h.gravedad == "GRAVE" and h.estado == CONFIRMADA]
 
+    # Detector B (punto 2, cross-campo): una cobertura implausible delata un
+    # monto mal leido que paso las validaciones de campo -- p.ej. "ARS 457" ->
+    # 457, un numero limpio pero con los ceros comidos, que ningun chequeo por
+    # campo puede ver. Los financieros no son confiables: no se rutea por ellos
+    # (no se fuerza LEGALES por un descubierto que sale de un numero roto) y el
+    # caso se degrada con una alerta que lleva el crudo.
+    gv = campos.get("garantia_valor", Campo(None))
+    cap = campos.get("capital_adeudado", Campo(None))
+    motivo_b = cobertura_implausible(gv.valor, cap.valor)
+    derivados_ruteo = derivados
+    alertas = _alertas(campos)
+    advertencias_b: list[Advertencia] = []
+    if motivo_b:
+        derivados_ruteo = {**derivados, "descubierto": None, "cobertura": None}
+        alertas = alertas + [Alerta(
+            campo="garantia_valor/capital_adeudado",
+            crudo_ocr=f"garantia={gv.crudo!r}, capital={cap.crudo!r}",
+            motivo=motivo_b, documento=gv.doc or cap.doc,
+            pagina=gv.pagina, confianza_ocr=gv.ocr_confianza)]
+        advertencias_b.append(Advertencia(
+            "capital/garantia",
+            f"{motivo_b}: monto no confiable, revisar a mano", degrada=True))
+
     aviso = campos.get("aviso_previo", Campo(None)).valor
-    ruta, motivo, influyen = rutear(graves, derivados, aviso, corte=corte)
+    ruta, motivo, influyen = rutear(graves, derivados_ruteo, aviso, corte=corte)
 
     return Veredicto(
         cliente_id=cliente_id,
@@ -103,6 +127,6 @@ def analizar(cliente_id: int, campos: dict[str, Campo], *,
         motivo=motivo,
         derivados=derivados,
         hallazgos=hallazgos,
-        advertencias=_advertencias(campos, influyen, hallazgos, docs_ilegibles),
-        alertas=_alertas(campos),
+        advertencias=_advertencias(campos, influyen, hallazgos, docs_ilegibles) + advertencias_b,
+        alertas=alertas,
     )

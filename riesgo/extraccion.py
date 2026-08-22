@@ -28,6 +28,7 @@ from .documentos import Documento
 from .modelo import Campo
 from .normalizacion import (normalizar_entero, normalizar_fecha,
                             normalizar_monto, normalizar_texto)
+from .validacion import separador_miles_roto
 
 SISTEMA = ("Sos un extractor de datos de documentos legales y financieros. "
            "Respondés solo con JSON. No inventás valores: si un dato no está "
@@ -213,13 +214,33 @@ async def extraer_documento(motor, doc: Documento, tipo: str) -> dict[str, Campo
     for nombre in campos:
         bruto = normalizar_texto(crudo.get(nombre))
         pagina, encontrado = _grounding(bruto, doc)
-        valor = CONVERSORES.get(nombre, lambda v: v)(bruto)
+        conf = doc.confianza_de(pagina) if doc.fue_ocr else None
+        conv = CONVERSORES.get(nombre)
+        es_monto = conv in (normalizar_monto, normalizar_entero)
+        valor = (conv or (lambda v: v))(bruto)
+
+        # Validacion numerica (punto 2): un monto que no se puede leer con
+        # seguridad no se descarta ni se usa. Se anula el valor y se marca
+        # `alerta_lectura` con el crudo, que motor.py convierte en Alerta y el
+        # CLI muestra como "OCR leyo: ...". Dos gatillos de campo:
+        #   - Detector A: separador de miles roto ("ARS 457.").
+        #   - crudo con digitos pero no interpretable ("2,63000000") -> distingue
+        #     "no se pudo leer" de "no estaba".
+        alerta = None
+        if es_monto:
+            alerta = separador_miles_roto(bruto)
+            if (not alerta and valor is None and bruto
+                    and any(ch.isdigit() for ch in str(bruto))):
+                alerta = "monto con formato no interpretable"
+
         salida[nombre] = Campo(
-            valor=valor,
+            valor=None if alerta else valor,
             doc=doc.nombre,
             pagina=pagina,
             grounding_ok=encontrado,
-            ocr_confianza=doc.confianza_de(pagina) if doc.fue_ocr else None,
+            ocr_confianza=conf,
+            crudo=bruto,
+            alerta_lectura=alerta,
         )
     return salida
 

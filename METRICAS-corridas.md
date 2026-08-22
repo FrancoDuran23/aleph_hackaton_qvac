@@ -84,21 +84,42 @@ El holdout —el test de generalización que nadie vio— sube de 65% a **90%**,
     - la confianza solo se consultaba en `evaluar_contradiccion()`, no en el
       grounding numérico
 
-  Fix diseñado, no aplicado: `garantia_valor` de este dataset es siempre
-  múltiplo de 1000 por construcción (`gen_dataset.py:281`,
-  `round(capital_adeudado * cobertura, -3)`). Un valor que no lo es delata el
-  truncamiento — chequeo determinista, sin heurísticas sobre el string OCR.
-  Ver `SDD-3-mi-parte.md` sección 3b.
+  **Fix aplicado** (`validacion.py` + `extraccion.py` + `motor.py`, este PR):
+  no por "múltiplo de 1000" (eso depende de cómo construye el dataset y no
+  generaliza), sino por **plausibilidad de dominio** — Detector B: la cobertura
+  `garantia / capital` cae fuera de [0.01, 100]. Cuando dispara, los financieros
+  no son confiables, no se rutea por ellos y el caso se degrada con la alerta y
+  el crudo. Resultado: `cliente_4498` pasó de `LEGALES·FIRME·MAL` a
+  `COBRANZAS·CON RESERVAS·OK`.
 
 - Holdout, 2 mal ruteados (`cliente_4470`, `cliente_4533`): contradicción real en
   escritura escaneada → PROBABLE → CON RESERVAS. No se fuerza a LEGALES, se flaguea.
+
+## 4. Validación de montos (Detector A + B) — resultado final
+
+Sobre el schema de alertas de lectura (`Campo.alerta_lectura`, `Alerta`,
+`Veredicto.alertas`). Detector A (separador de miles roto) + validación de
+normalización marcan `alerta_lectura` por campo; Detector B (magnitud) es
+cross-campo y emite una alerta a nivel caso. `"2,63000000"` ahora normaliza a
+`None` en vez de `2.63`.
+
+| | DEV (seed 1) | HOLDOUT (seed 99) |
+|---|---|---|
+| **precisión sobre FIRMES** | **15/15 = 100%** | **8/8 = 100%** |
+| cobertura (% FIRMES) | 75% | 40% |
+| **errores silenciosos** | **0** | **0** |
+| exactitud global | 85% | 90% |
+
+La cobertura baja a propósito (más casos a revisión humana); el canje es 100% de
+precisión en lo que el sistema resuelve solo y cero respuestas seguras y
+equivocadas en ambos sets.
 
 ---
 
 ## Notas
 
 - El path `--real` (extracción con modelo) requirió fixes de compatibilidad con
-  el SDK 0.17.1 (`llm.py`: `connect()` y `await completion`), ya en `main` (PR #1).
-- El fix de confianza (esta corrida) está en la rama del PR, pendiente de mergear.
-- Contradicciones detectadas: el detector sigue marcando las diferencias; lo que
-  cambia es que las de OCR no fuerzan ruteo (quedan PROBABLE + CON RESERVAS).
+  el SDK 0.17.1 (`llm.py`: `connect()` y `await completion`), en `main` (PR #1).
+- El fix de contradicciones por confianza de OCR está en `main` (PR #2).
+- Detector A/B, la persistencia del crudo (`--guardar`) y la auditoría
+  (`auditoria_ocr.py`) van en este PR, sobre el schema de alertas de `main`.

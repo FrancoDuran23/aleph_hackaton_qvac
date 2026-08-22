@@ -67,3 +67,7 @@ docker-compose.yml
 # Salidas de corridas: se regeneran, no se versionan
 pruebas/*.txt
 dataset99/
+
+# Artefactos de auditoria/eval (generados)
+salidas/
+dataset_holdout/
