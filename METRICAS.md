@@ -201,10 +201,8 @@ Jaro-Winkler pondera el prefijo, así que `Perez, Juan` contra `Juan Perez` da b
 
 ## 4. La métrica principal — precisión sobre los FIRMES
 
-> Con extracción desde el ground truth. Cuando el extractor esté enchufado, esta sección pasa a depender del modelo.
-
 ```bash
-.venv/Scripts/python -m riesgo.evaluar
+.venv/Scripts/python -m riesgo.evaluar --real --bridge
 ```
 
 El sistema **siempre** produce un veredicto. Nada frena el ruteo. Lo que varía es cuánta confianza declara tener:
@@ -212,7 +210,7 @@ El sistema **siempre** produce un veredicto. Nada frena el ruteo. Lo que varía 
 - **FIRME** — ningún dato que influyó en la decisión tiene reservas
 - **CON RESERVAS** — ruteó igual, con N advertencias anotadas
 
-Escenario medido: el OCR todavía no está enchufado, así que las 6 escrituras escaneadas extraen **0 caracteres**.
+Escenario medido: **extracción real desde los PDFs**, con el OCR todavía sin enchufar, así que las 6 escrituras escaneadas extraen 0 caracteres.
 
 ```
 14 FIRMES         → 14/14 correctos      precisión 100%
@@ -220,7 +218,16 @@ Escenario medido: el OCR todavía no está enchufado, así que las 6 escrituras 
 
 Cobertura: 70%
 Contradicciones GRAVES: 6/11 detectadas
+11,0 min · 33 s por caso
 ```
+
+### La extracción no agregó ni un error
+
+Correr el mismo escenario tomando los campos del ground truth en vez de los PDFs da **exactamente lo mismo**: 14/14, misma cobertura, los mismos cuatro casos mal.
+
+O sea: sobre documentos legibles, un modelo de 1,2 GB extrae tan bien como el oráculo. **Todo lo que el sistema erra es atribuible al OCR que falta, nada a la inferencia.**
+
+Eso separa dos cosas que un score único mezcla: lo que falla por el modelo y lo que falla por los datos. Acá, todo lo que falla es por los datos.
 
 **Los 4 casos mal ruteados salieron los 4 marcados CON RESERVAS.** Cero errores silenciosos.
 
