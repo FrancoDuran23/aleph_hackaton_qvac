@@ -10,6 +10,12 @@ id_hetzner*
 .env.*
 !.env.example
 
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
 # Node
 node_modules/
 npm-debug.log*
@@ -28,6 +34,19 @@ Thumbs.db
 .atl/
 
 # Orca / Gentle AI local tooling state
-.atl/
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+
+# Dataset extraido de dataset_riesgo.tar.gz
+dataset/
+
+# Bases de datos locales
+*.db
+
+# Contenido real del hackathon -- el usuario lo carga ese dia, no se versiona
+data/pdfs/*
+!data/pdfs/.gitkeep
+demo/preguntas.json
+!demo/preguntas.example.json
+demo/cache_calentado.json
+toolkit/claude_brain/errors_log.md

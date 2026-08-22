@@ -1,0 +1,17 @@
+{
+  "name": "qvac-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Bridge HTTP sobre el SDK de QVAC para consumirlo desde Python",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=22.17"
+  },
+  "dependencies": {
+    "@qvac/sdk": "^0.17.1"
+  }
+}

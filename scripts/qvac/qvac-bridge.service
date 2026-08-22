@@ -1,0 +1,33 @@
+[Unit]
+Description=QVAC bridge HTTP (inferencia local para la app del hackathon)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=qvac
+Group=qvac
+WorkingDirectory=/opt/qvac-bridge
+EnvironmentFile=/etc/qvac-bridge.env
+ExecStart=/usr/bin/node /opt/qvac-bridge/server.mjs
+
+# La primera carga descarga cientos de MB y compila kernels: darle poco margen
+# haría que systemd lo matara justo cuando está por quedar listo.
+TimeoutStartSec=900
+TimeoutStopSec=60
+Restart=on-failure
+RestartSec=10
+
+# El proceso solo necesita escribir en su propio directorio (modelos + cache).
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/qvac-bridge
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=qvac-bridge
+
+[Install]
+WantedBy=multi-user.target
