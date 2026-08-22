@@ -11,7 +11,7 @@ from datetime import date
 
 from .calculo import derivar
 from .contradicciones import detectar
-from .modelo import PROBABLE, Advertencia, Campo, Veredicto
+from .modelo import CONFIRMADA, GRAVE, PROBABLE, Advertencia, Campo, Veredicto
 from .ruteo import CORTE_DESCUBIERTO, rutear
 
 
@@ -47,8 +47,12 @@ def _advertencias(campos: dict[str, Campo], influyen: tuple[str, ...],
 
     for h in hallazgos:
         if h.estado == PROBABLE:
+            # Una contradiccion GRAVE que quedo en PROBABLE (p.ej. por venir de
+            # OCR) no fuerza el ruteo, pero SI degrada el caso a CON RESERVAS:
+            # hay un posible defecto de garantia que no se pudo confirmar. Mejor
+            # que un analista lo mire, no que el caso salga FIRME y equivocado.
             avisos.append(Advertencia(h.tipo, f"hallazgo no confirmado: {h.detalle}",
-                                      degrada=False))
+                                      degrada=(h.gravedad == GRAVE)))
 
     return avisos
 
@@ -68,7 +72,11 @@ def analizar(cliente_id: int, campos: dict[str, Campo], *,
 
     hallazgos = detectar(campos, hoy=hoy)
     derivados = derivar(campos)
-    graves = [h for h in hallazgos if h.gravedad == "GRAVE"]
+    # Solo una contradiccion grave CONFIRMADA fuerza el ruteo a LEGALES. Una
+    # PROBABLE (p.ej. un valor leido por OCR de baja confianza) no fuerza: queda
+    # anotada y el caso sale CON RESERVAS para revision humana, en vez de mandar
+    # a legales por un posible error de lectura.
+    graves = [h for h in hallazgos if h.gravedad == "GRAVE" and h.estado == CONFIRMADA]
 
     aviso = campos.get("aviso_previo", Campo(None)).valor
     ruta, motivo, influyen = rutear(graves, derivados, aviso, corte=corte)

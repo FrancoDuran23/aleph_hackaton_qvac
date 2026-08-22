@@ -23,6 +23,15 @@ from .modelo import (BAJA, CONFIRMADA, DESCARTADA, GRAVE, MEDIA, PROBABLE,
 
 ANIOS_TASACION_VALIDA = 5
 
+
+def _de_ocr(*campos: Campo) -> bool:
+    """True si algun campo comparado vino de un documento escaneado (OCR).
+
+    En ese caso las comparaciones toleran ruido de lectura, para no confundir
+    un caracter mal escaneado con una contradiccion real.
+    """
+    return any(c.ocr_confianza is not None for c in campos)
+
 # Zona gris: difieren, pero no tanto como para estar seguros. Se reporta como
 # PROBABLE en vez de CONFIRMADA. No degrada el caso, solo se anota.
 ZONA_GRIS = (0.80, 0.85)
@@ -53,7 +62,9 @@ def titular_garantia(titular_contrato: Campo, titular_escritura: Campo) -> Halla
 
     sim = similitud_nombres(str(titular_contrato.valor), str(titular_escritura.valor))
     difieren = not misma_persona(str(titular_contrato.valor), str(titular_escritura.valor))
-    dudoso = ZONA_GRIS[0] <= sim < ZONA_GRIS[1]
+    # Si un lado vino de OCR, la diferencia puede ser un error de lectura:
+    # se marca dudoso -> PROBABLE, no CONFIRMADA, para no forzar el ruteo.
+    dudoso = (ZONA_GRIS[0] <= sim < ZONA_GRIS[1]) or _de_ocr(titular_contrato, titular_escritura)
 
     return Hallazgo(
         "titular_garantia", GRAVE,
@@ -73,9 +84,11 @@ def matricula_distinta(mat_contrato: Campo, mat_escritura: Campo) -> Hallazgo:
                         "falta la matricula de alguno de los dos documentos")
 
     difieren = norm(str(mat_contrato.valor)) != norm(str(mat_escritura.valor))
+    # OCR de un lado -> la diferencia puede ser un digito mal leido: dudoso.
     return Hallazgo(
         "matricula_distinta", GRAVE,
-        _estado(mat_contrato, mat_escritura, difieren),
+        _estado(mat_contrato, mat_escritura, difieren,
+                dudoso=_de_ocr(mat_contrato, mat_escritura)),
         f"Matricula en escritura {mat_escritura.valor!r} {mat_escritura.cita()} "
         f"vs contrato {mat_contrato.valor!r} {mat_contrato.cita()}.",
         (str(mat_contrato.doc), str(mat_escritura.doc)),
