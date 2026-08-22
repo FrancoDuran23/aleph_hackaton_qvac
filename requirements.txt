@@ -4,7 +4,8 @@ tetherto-qvac-sdk>=0.17.1   # instalar con:
 #     -f https://github.com/tetherto/qvac/releases/expanded_assets/sdk-v0.17.0
 
 # Lectura de documentos
-pypdf>=4.0.0
+pypdf>=4.0.0                # texto de PDFs nativos
+pymupdf>=1.24.0             # rasteriza PDFs escaneados para el OCR de QVAC
 python-dateutil>=2.9.0
 
 # Comparación de valores
