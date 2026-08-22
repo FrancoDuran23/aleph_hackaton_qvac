@@ -129,7 +129,11 @@ class Motor:
     async def __aenter__(self) -> "Motor":
         inicio = time.perf_counter()
         self._cliente = Client()
-        self._transport = await self._cliente.connect()
+        # connect() devuelve el Client, no el transport; el transport sale de
+        # la propiedad. En el SDK 0.17.1 pasar el Client a load_model rompe con
+        # "'Client' object has no attribute 'call_stream'".
+        await self._cliente.connect()
+        self._transport = self._cliente.transport
         delegate = None
         if self.provider:
             delegate = {
@@ -179,7 +183,10 @@ class Motor:
         params = {**PARAMS_DETERMINISTAS, "predict": max_tokens}
 
         inicio = time.perf_counter()
-        run = await completion(
+        # completion() no es coroutine: devuelve un CompletionRun. Lo awaitable
+        # es run.final. En 0.17.1 'await completion(...)' rompe con
+        # "object CompletionRun can't be used in 'await' expression".
+        run = completion(
             self._transport,
             model_id=self._model_id,
             history=history,

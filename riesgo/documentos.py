@@ -60,15 +60,29 @@ class Documento:
 
 
 def leer_documento(path: str | Path) -> Documento:
-    """Stub: solo texto nativo, sin OCR.
+    """Lee un PDF: texto nativo con pypdf; si está escaneado, OCR de QVAC.
 
-    Se reemplaza por la versión del compañero cuando esté. El resto del
-    pipeline no cambia: lo único que consume es el `Documento` que devuelve.
+    Un PDF nativo (con capa de texto) sale por pypdf y es instantáneo. Uno
+    escaneado —sin capa de texto, o sea ``ilegible``— pasa por el OCR de QVAC,
+    que devuelve texto y confianza por página. Esa confianza es la señal que el
+    resto del pipeline usa para distinguir "el OCR leyó mal" de "contradicción
+    real". La firma no cambia: el resto del pipeline sigue consumiendo el mismo
+    `Documento`.
     """
     p = Path(path)
     lector = PdfReader(str(p))
-    return Documento(nombre=p.name,
-                     paginas=[pag.extract_text() or "" for pag in lector.pages])
+    nativo = Documento(nombre=p.name,
+                       paginas=[pag.extract_text() or "" for pag in lector.pages])
+    if not nativo.ilegible:
+        return nativo
+
+    # Escaneado: sin capa de texto -> OCR de QVAC (texto + confianza por página).
+    # Import perezoso: un caso 100% nativo no necesita pymupdf ni el worker.
+    from . import ocr
+
+    paginas, confianzas = ocr.ocr_pdf(p)
+    return Documento(nombre=p.name, paginas=paginas,
+                     fue_ocr=True, confianzas=confianzas)
 
 
 def leer_texto_plano(path: str | Path) -> Documento:
