@@ -11,7 +11,7 @@ from datetime import date
 
 from .calculo import derivar
 from .contradicciones import detectar
-from .modelo import PROBABLE, Advertencia, Campo, Veredicto
+from .modelo import CONFIRMADA, PROBABLE, Advertencia, Campo, Veredicto
 from .ruteo import CORTE_DESCUBIERTO, rutear
 
 
@@ -68,7 +68,11 @@ def analizar(cliente_id: int, campos: dict[str, Campo], *,
 
     hallazgos = detectar(campos, hoy=hoy)
     derivados = derivar(campos)
-    graves = [h for h in hallazgos if h.gravedad == "GRAVE"]
+    # Solo una GRAVE ya CONFIRMADA fuerza LEGALES. Una GRAVE que salio
+    # PROBABLE -- difieren, pero un lado viene de OCR de baja confianza --
+    # no alcanza para forzar el ruteo: podria ser ruido de lectura, no una
+    # garantia con defecto real. Ver seccion 5b y SDD-3.
+    graves = [h for h in hallazgos if h.gravedad == "GRAVE" and h.estado == CONFIRMADA]
 
     aviso = campos.get("aviso_previo", Campo(None)).valor
     ruta, motivo, influyen = rutear(graves, derivados, aviso, corte=corte)
