@@ -1,7 +1,7 @@
 # Correr QVAC en un server propio
 
 Levanta un modelo local de QVAC en un server Linux y lo expone por HTTP para
-que la app Python de este repo lo use en lugar de Anthropic y Gemini. El
+que la app Python de este repo lo use para toda su inferencia. El
 objetivo es sacar las llamadas a APIs externas del camino crítico: la
 inferencia pasa a correr en hardware que controlás vos.
 

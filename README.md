@@ -59,7 +59,7 @@ Preguntas fuera del recorrido siguen yendo por el camino normal
 ```
 toolkit/            piezas reusables, documentadas, extraídas de proyectos
                      que ya funcionan (ver toolkit/README.md)
-  claude_brain/      wrapper de Anthropic con retry + caching + tool-use
+  qvac_brain/        inferencia local QVAC: generación + embeddings
   whatsapp_wasender/ cliente de WASenderApi
   hybrid_rag/        ingesta de PDFs + búsqueda híbrida RRF + multihop
 
@@ -79,13 +79,12 @@ scripts/             atajos de docker compose exec
 ## Dónde escribir tu lógica de dominio
 
 - **Cambiar cómo se arma la respuesta**: `app/answer.py` — ahí está el
-  system prompt y qué se le pasa a Claude.
+  system prompt y qué se le pasa al modelo.
 - **Cambiar qué se busca**: `toolkit/hybrid_rag/multihop.py` y
   `retrieval.py` si necesitás filtros o ranking distinto.
-- **Agregar tools de Claude** (acciones, no solo respuestas): usá
-  `toolkit/claude_brain/brain.py:llamar_claude_con_tools` — ya tiene el
-  loop armado, solo hace falta definir el schema de la tool y un
-  dispatcher.
+- **Agregar tool use** (acciones, no solo respuestas): el SDK de QVAC
+  soporta `tools` en `completion()`, pero `qvac_brain` todavía no lo
+  expone. Hay que agregarlo ahí primero.
 
 ## WhatsApp: la letra chica
 
@@ -108,10 +107,9 @@ tiempo de armar el túnel.
   `docker compose logs postgres` — normalmente es un volumen viejo con
   datos de otra corrida. `docker compose down -v` y volver a levantar (esto
   borra los datos indexados, hay que reingestar).
-- **`/chat` tarda mucho o tira error de Gemini/Anthropic**: revisá que
-  `GEMINI_API_KEY` y `ANTHROPIC_API_KEY` estén bien en `.env`, y que
-  `docker compose up` haya sido levantado *después* de crear `.env` (si lo
-  creaste con los contenedores ya corriendo, hacé `docker compose restart app`).
+- **`/chat` tarda mucho**: la inferencia corre en CPU. Una respuesta larga
+  tarda decenas de segundos; es esperable. Si en cambio falla rápido, el
+  motor de inferencia no está accesible — revisá `scripts/qvac/README.md`.
 - **El chat responde "no se encontró contexto relevante"**: todavía no
   corriste `./scripts/ingest.sh`, o los PDFs no tenían texto extraíble
   (escaneados sin OCR, por ejemplo).

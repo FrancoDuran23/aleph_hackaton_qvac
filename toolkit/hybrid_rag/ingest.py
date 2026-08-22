@@ -76,7 +76,7 @@ def ingestar_carpeta(carpeta: Path) -> int:
         return 0
 
     print(f"\nTotal: {len(filas)} chunks de {len(pdfs)} documentos")
-    print("Generando embeddings (Gemini)...")
+    print("Generando embeddings (QVAC, local)...")
 
     embeddings = []
     for i, fila in enumerate(filas, 1):

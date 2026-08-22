@@ -1,10 +1,10 @@
 """Embeddings con QVAC. Reemplazo drop-in de `toolkit.hybrid_rag.embeddings`.
 
-Expone la misma interfaz (`embed`, `dim`) que la versión Gemini, así que
+Expone la interfaz (`embed`, `dim`) que espera el pipeline, así que
 `ingest.py`, `db.py` y `retrieval.py` no necesitan cambios: alcanza con
 cambiar el import.
 
-Igual que en la versión Gemini, la dimensión no se hardcodea — se detecta en
+La dimensión no se hardcodea — se detecta en
 la primera llamada y se reusa. GTE Large devuelve 1024, pero si cambiás
 QVAC_EMBED_MODEL el número cambia y `db.py` arma el VECTOR(N) correcto solo.
 """
@@ -31,7 +31,7 @@ def embed_lote(textos: list[str]) -> list[list[float]]:
     """Embeddings de varios textos en una sola llamada.
 
     La ingesta manda cientos de chunks; agruparlos evita pagar un round-trip
-    HTTP por chunk. La versión Gemini no tenía esto porque cada llamada salía
+    HTTP por chunk. Antes no existía porque cada llamada salía
     a internet igual — acá el bridge es local y el batch sí rinde.
     """
     global _dim_cache

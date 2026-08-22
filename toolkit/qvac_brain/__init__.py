@@ -1,12 +1,10 @@
 """Inferencia local con QVAC, vía el bridge HTTP de `scripts/qvac/`.
 
-Reemplaza a `claude_brain` (generación) y a `hybrid_rag.embeddings` (embeddings)
+Generación y embeddings locales sobre QVAC
 sin cambiar sus firmas. Ver README.md en esta carpeta.
 """
 from .brain import (
     RESPUESTA_FALLBACK,
-    llamar_claude,
-    llamar_claude_sync,
     llamar_llm,
     llamar_llm_sync,
 )
@@ -19,8 +17,6 @@ __all__ = [
     "dim",
     "embed",
     "embed_lote",
-    "llamar_claude",
-    "llamar_claude_sync",
     "llamar_llm",
     "llamar_llm_sync",
     "salud",

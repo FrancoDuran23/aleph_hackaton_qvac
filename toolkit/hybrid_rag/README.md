@@ -19,12 +19,11 @@ adicionales por sub-consulta, generadas por LLM).
   / ubicación); acá se generalizó para que el LLM decida las sub-consultas
   según la pregunta, sin asumir dominio.
 
-También se simplificó el stack de proveedores: talentbase usa Voyage AI
-(embeddings) + Gemini (descomposición) + Cohere (rerank, off por default)
-+ Anthropic — 4 API keys. Acá quedaron 2: Gemini para todo lo que es
-embeddings y descomposición (mismo patrón que ya probó AIRgent), Anthropic
-para el fallback de descomposición y la respuesta final. Sin Cohere: es
-un cross-encoder rerank opcional, no hace falta para un corpus chico.
+También se simplificó el stack: talentbase usaba cuatro proveedores
+externos y cuatro API keys para embeddings, descomposición, rerank y
+respuesta. Acá quedó **cero**: todo corre sobre un modelo QVAC local, vía
+`qvac_brain`. Sin rerank: es un cross-encoder opcional, no hace falta para
+un corpus chico.
 
 ## Cómo funciona una búsqueda
 
@@ -33,7 +32,7 @@ pregunta del usuario
    │
    ├─► embed(pregunta) ─► buscar_hibrido() ── RRF(vector + tsvector) ──► pool base
    │
-   └─► descomponer_pregunta(pregunta)   [Gemini Flash → Haiku → passthrough]
+   └─► descomponer_pregunta(pregunta)   [QVAC local → passthrough]
           │
           ├─► sub-consulta 1 ─► embed ─► buscar_vectorial() ─┐
           ├─► sub-consulta 2 ─► embed ─► buscar_vectorial() ─┼─► unidos al pool (sin duplicados)
@@ -78,7 +77,7 @@ from toolkit.hybrid_rag.multihop import buscar_multihop
 
 chunks = buscar_multihop("¿qué dice el documento sobre X?")
 contexto = "\n\n".join(f"[{c.fuente}] {c.contenido}" for c in chunks)
-# ... pasarle `contexto` a claude_brain.brain.llamar_claude como parte del system/user prompt
+# ... pasarle `contexto` a qvac_brain.llamar_llm como parte del system/user prompt
 ```
 
 Si el hackathon NO necesita multihop (corpus chico, preguntas simples),

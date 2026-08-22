@@ -6,22 +6,22 @@ idea de hackathon, mirar acá primero antes de escribir nada de cero.
 
 | Carpeta | Qué es | Sacado de |
 |---|---|---|
-| [`claude_brain/`](claude_brain/README.md) | Wrapper del SDK de Anthropic: retry, prompt caching, loop de tool-use | BizBot (`D:\bot\bizbot-ventas`) |
+| [`qvac_brain/`](qvac_brain/README.md) | Inferencia local QVAC: generación de texto + embeddings | este repo |
 | [`whatsapp_wasender/`](whatsapp_wasender/README.md) | Cliente de WASenderApi: parsear webhook, mandar mensaje | BizBot (`D:\bot\bizbot-ventas`) |
 | [`hybrid_rag/`](hybrid_rag/README.md) | Ingesta de PDFs a pgvector + búsqueda híbrida RRF + multihop | AIRgent (`D:\AIRgent`) + talentbase (`D:\talentbase`) |
 
 Cada módulo es standalone: solo importa de otro módulo del toolkit cuando
 hay una dependencia real (p. ej. `hybrid_rag/multihop.py` usa
-`claude_brain/brain.py` como fallback del LLM de descomposición), nunca
+`qvac_brain/brain.py` para descomponer consultas), nunca
 por conveniencia. Podés copiar una sola carpeta a otro repo sin arrastrar
 las demás, excepto esa dependencia puntual.
 
 ## Cuándo usar qué
 
 - ¿El hackathon necesita un bot de WhatsApp? → `whatsapp_wasender/` +
-  `claude_brain/`.
+  `qvac_brain/`.
 - ¿Necesita responder preguntas sobre documentos propios? → `hybrid_rag/`
-  + `claude_brain/` para la respuesta final.
+  + `qvac_brain/` para la respuesta final.
 - ¿Necesita las dos cosas? Mirá `app/` en la raíz de este repo — es
   exactamente esa combinación, ya armada.
 

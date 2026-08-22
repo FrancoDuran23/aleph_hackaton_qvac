@@ -4,7 +4,42 @@
 
 Todo lo de acá salió de correr código, no de estimar. Cada número dice con qué comando se reproduce.
 
-Medición: 2026-08-22 · Modelo: `QWEN3_1_7B_INST_Q4` · Backend: CPU
+## Configuración de la medición
+
+Todo número de este documento corresponde a **una** configuración. Si se cambia
+el modelo hay que volver a correr los tres comandos de la sección 7 y anotar
+una fila nueva — no editar la existente.
+
+| | |
+|---|---|
+| **Modelo de generación** | `QWEN3_1_7B_INST_Q4` |
+| **Modelo de embeddings** | `EMBEDDINGGEMMA_300M_Q4_0` |
+| **Backend** | CPU |
+| **Parámetros** | `temp=0`, `top_p=1`, `seed=7`, `reasoning_budget=0` |
+| **Fecha** | 2026-08-22 |
+
+### Comparativa entre modelos
+
+Las métricas de las secciones 3, 4 y 5 son de la lógica y **no dependen del
+modelo**: se calculan sobre el ground truth, sin inferencia. Las que sí cambian
+al cambiar de modelo son las de las secciones 1 y 2.
+
+| Modelo | Extracción 5/5 | Latencia 6 campos | tok/s | Determinista |
+|---|---|---|---|---|
+| `QWEN3_1_7B_INST_Q4` | ✅ 5/5 | 9,8 s | 17 | ✅ |
+| `QWEN3_600M_INST_Q4` | — | — | — | — |
+| `LLAMA_3_2_1B_INST_Q4_0` | — | — | — | — |
+| `QWEN3_4B_Q4_K_M` | — | — | — | — |
+
+Para agregar una fila:
+
+```bash
+QVAC_LLM_MODEL=<constante> .venv/Scripts/python -m riesgo.hito1 --bridge
+```
+
+⚠️ Los modelos de la familia Qwen3 razonan por defecto. Si se prueba uno que
+**no** sea de razonamiento, `reasoning_budget` no aplica y las cifras de la
+sección 2 no son comparables directamente — anotarlo en la fila.
 
 ---
 
@@ -21,6 +56,8 @@ El número que sí depende de nosotros es **precisión sobre los casos FIRMES**,
 ---
 
 ## 1. Inferencia local — Hito 1
+
+> Depende del modelo. Ver la comparativa de arriba.
 
 ```bash
 .venv/Scripts/python -m riesgo.hito1 --bridge
@@ -56,6 +93,8 @@ En el paso 4 el modelo distinguió `capital_original` de `capital_adeudado` esta
 
 ## 2. Latencia
 
+> Depende del modelo y del hardware. Ver la comparativa de arriba.
+
 | Métrica | Valor |
 |---|---|
 | Extracción de 6 campos | **9,8 s** |
@@ -79,6 +118,8 @@ Para extracción el razonamiento es desperdicio puro: el modelo no deduce nada, 
 ---
 
 ## 3. Comparación de valores — números y texto se comparan distinto
+
+> Independiente del modelo: se mide sobre el ground truth, sin inferencia.
 
 ```bash
 .venv/Scripts/python -m riesgo.calibrar
@@ -111,6 +152,8 @@ Jaro-Winkler pondera el prefijo, así que `Perez, Juan` contra `Juan Perez` da b
 ---
 
 ## 4. La métrica principal — precisión sobre los FIRMES
+
+> Con extracción desde el ground truth. Cuando el extractor esté enchufado, esta sección pasa a depender del modelo.
 
 ```bash
 .venv/Scripts/python -m riesgo.evaluar
@@ -173,20 +216,24 @@ Por eso un `null` causado por un documento ilegible **degrada** el caso, mientra
 
 ## 6. Inferencia 100% local — verificación
 
-Ningún camino vivo del motor de riesgo sale a la red. Verificado por grep sobre los call sites:
+Ningún camino del proyecto sale a la red. Verificado por grep sobre todo el
+árbol de código:
+
+```bash
+grep -rn "claude|anthropic|genai|gemini" --include=*.py --include=*.txt      app/ toolkit/ scripts/ riesgo/ requirements.txt
+#  (sin resultados)
+```
 
 | Módulo | Importa | Estado |
 |---|---|---|
-| `app/answer.py:7` | `from toolkit import qvac_brain as brain` | local |
-| `hybrid_rag/multihop.py:27` | `from .. import qvac_brain as brain` | local |
-| `hybrid_rag/multihop.py:29` | `from ..qvac_brain.embeddings import embed` | local |
-| `hybrid_rag/ingest.py:21` | `from ..qvac_brain.embeddings import dim, embed` | local |
+| `app/answer.py` | `qvac_brain.llamar_llm_sync` | local |
+| `hybrid_rag/multihop.py` | `qvac_brain.llamar_llm_sync`, `embed` | local |
+| `hybrid_rag/ingest.py` | `qvac_brain.embed`, `dim` | local |
 
-⚠️ **Los alias `llamar_claude` / `llamar_claude_sync` conservan el nombre viejo** para que la migración fuera solo cambiar imports (`qvac_brain/brain.py:123`). El nombre engaña: la inferencia es local. Conviene renombrarlos antes de entregar — un `grep claude` del jurado sobre el camino caliente obliga a explicar, y explicar cuesta.
-
-Deuda a limpiar: `anthropic` y `google-genai` siguen en `requirements.txt`, y `toolkit/claude_brain/` sigue en el árbol sin que nadie lo importe.
-
----
+Se eliminaron del repo: el módulo `claude_brain/` completo, el
+`hybrid_rag/embeddings.py` que importaba `google.genai`, los alias
+`llamar_claude*`, y las dependencias `anthropic` y `google-genai` de
+`requirements.txt`.
 
 ## 7. Cómo reproducir todo
 

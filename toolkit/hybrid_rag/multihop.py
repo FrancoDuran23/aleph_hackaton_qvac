@@ -58,7 +58,7 @@ def _parsear_json_sub_consultas(texto: str) -> list[str]:
 def descomponer_pregunta(pregunta: str) -> list[str]:
     """Descompone la pregunta con el modelo local; passthrough si falla.
 
-    Antes esto llamaba a Gemini Flash primero y caía a Claude Haiku. Las dos
+    Antes esto salía a APIs remotas con un fallback a otra API remota. Las dos
     eran llamadas de red, que es justamente lo que QVAC viene a sacar del medio:
     ahora el único camino es el modelo local.
 

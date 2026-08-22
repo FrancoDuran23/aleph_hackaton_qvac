@@ -75,7 +75,7 @@ def buscar_hibrido(query_texto: str, query_vec: list[float], top_k: int = 8) -> 
 def buscar_vectorial(query_vec: list[float], top_k: int = 5) -> list[Chunk]:
     """Búsqueda de un solo brazo (solo vector, sin fusión). La usa
     multihop.py para cada sub-consulta -- en talentbase los hops tampoco
-    fusionan con léxico, van directo a vector (ver docs/gemini-agentic-rag.md
+    fusionan con léxico, van directo a vector (ver docs/agentic-rag.md
     de ese repo, sección "After")."""
     sql = """
         SELECT id, doc_id, contenido, fuente

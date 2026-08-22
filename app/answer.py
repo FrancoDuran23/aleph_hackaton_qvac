@@ -35,7 +35,7 @@ def responder(pregunta: str, historial: list[dict], usar_cache: bool = True) -> 
     try:
         contexto = _formatear_contexto(buscar_multihop(pregunta))
     except Exception as e:
-        # Si Gemini/Postgres están caídos y la pregunta no estaba
+        # Si el motor de inferencia o Postgres están caídos y la pregunta no estaba
         # precalentada, mejor responder honestamente sin contexto que
         # devolver un 500 crudo en medio de la demo.
         print(f"aviso: búsqueda en documentos falló ({e}), respondo sin contexto recuperado", file=sys.stderr)
@@ -44,9 +44,8 @@ def responder(pregunta: str, historial: list[dict], usar_cache: bool = True) -> 
     system = SYSTEM_PROMPT.format(contexto=contexto)
 
     messages = [*historial, {"role": "user", "content": pregunta}]
-    texto, _in_tok, _out_tok = brain.llamar_claude_sync(
+    texto, _in_tok, _out_tok = brain.llamar_llm_sync(
         messages=messages,
         system=system,
-        modelo="claude-sonnet-4-6",
     )
     return texto

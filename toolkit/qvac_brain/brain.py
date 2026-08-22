@@ -1,19 +1,14 @@
-"""Generación de texto con QVAC. Reemplazo drop-in de `toolkit.claude_brain.brain`.
+"""Generación de texto con QVAC: inferencia local, sin salir a la red.
 
-Mantiene la firma y el contrato de retorno de `llamar_claude` /
-`llamar_claude_sync` — `(texto, input_tokens, output_tokens)` — para que
+Mantiene el contrato de retorno `(texto, input_tokens, output_tokens)` para que
 `app/answer.py` y `toolkit/hybrid_rag/multihop.py` cambien solo el import.
 
-Diferencias respecto de la versión Anthropic, a propósito:
+`modelo` es una constante del SDK de QVAC (QWEN3_1_7B_INST_Q4,
+LLAMA_3_2_1B_INST_Q4_0, ...). Un nombre que no exista da 400 con la lista de
+constantes válidas.
 
-- **No hay prompt caching.** Es una optimización de facturación de la API de
-  Anthropic; acá el modelo es local y no hay nada que facturar.
-- **`modelo` es una constante del SDK de QVAC** (QWEN3_1_7B_INST_Q4,
-  LLAMA_3_2_1B_INST_Q4_0, ...), no un ID de Anthropic. Si le pasás un ID de
-  Claude el bridge devuelve 400 con la lista de constantes válidas.
-- **La versión async es async de verdad.** La de `claude_brain` declara `async`
-  pero adentro llama al cliente sincrónico, así que bloquea el event loop; acá
-  usamos httpx.AsyncClient.
+No hay prompt caching: es una optimización de facturación de APIs remotas, y
+acá no hay nada que facturar.
 """
 import os
 
@@ -37,23 +32,6 @@ MODELO_DEFAULT = os.getenv("QVAC_LLM_MODEL", "QWEN3_1_7B_INST_Q4")
 PARAMS_DEFAULT: dict[str, object] = {"temp": 0.0, "top_p": 1.0, "reasoning_budget": 0}
 
 
-_modelos_avisados: set[str] = set()
-
-
-def _resolver_modelo(modelo: str) -> str:
-    """Traduce un ID de Anthropic al modelo local configurado.
-
-    Los call sites de `claude_brain` traen el modelo hardcodeado
-    (`modelo="claude-sonnet-4-6"`). Si eso llegara tal cual al bridge daría 400
-    y el swap dejaría de ser drop-in, así que lo mapeamos al modelo local y
-    avisamos una vez por ID — que el aviso no ensucie el log en cada request.
-    """
-    if not modelo.startswith("claude"):
-        return modelo
-    if modelo not in _modelos_avisados:
-        _modelos_avisados.add(modelo)
-        print(f"[qvac_brain] '{modelo}' es un ID de Anthropic; uso el modelo local {MODELO_DEFAULT}")
-    return MODELO_DEFAULT
 
 
 def _armar_payload(messages: list[dict], system: str, modelo: str,
@@ -62,14 +40,14 @@ def _armar_payload(messages: list[dict], system: str, modelo: str,
     """Arma el body para POST /v1/completion."""
     msgs = list(messages)
     if prefill:
-        # Mismo truco que en la versión Anthropic: un turno de assistant abierto
+        # Un turno de assistant abierto
         # que el modelo continúa. Con chat templates de llama.cpp el efecto es
         # parecido pero no idéntico — verificá la salida si dependés del prefill.
         msgs.append({"role": "assistant", "content": prefill})
 
     payload = {
         "messages": msgs,
-        "model": _resolver_modelo(modelo),
+        "model": modelo or MODELO_DEFAULT,
         "max_tokens": max_tokens,
         "generation_params": {**PARAMS_DEFAULT, **(generation_params or {})},
     }
@@ -137,7 +115,3 @@ async def llamar_llm(messages: list[dict], system: str = "",
         return RESPUESTA_FALLBACK, 0, 0
 
 
-# Alias con los nombres de `claude_brain`, para que migrar un módulo sea cambiar
-# el import y nada más. Los nombres reales son llamar_llm* — acá no hay Claude.
-llamar_claude_sync = llamar_llm_sync
-llamar_claude = llamar_llm
