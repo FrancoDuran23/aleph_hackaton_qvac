@@ -15,8 +15,9 @@ inferencia corre con sampling por defecto y nada lo delata salvo que la misma
 entrada devuelva salidas distintas.
 
 Uso:
-    .venv/Scripts/python -m riesgo.hito1                  # local
-    .venv/Scripts/python -m riesgo.hito1 --provider <clave>   # delegado
+    .venv/Scripts/python -m riesgo.hito1                      # SDK local
+    .venv/Scripts/python -m riesgo.hito1 --bridge             # bridge HTTP
+    .venv/Scripts/python -m riesgo.hito1 --provider <clave>   # delegado P2P
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ import argparse
 import asyncio
 import json
 
+from .bridge import MotorBridge
 from .llm import Motor, schema_json
 
 # Un fragmento de contrato con las trampas del dataset juntas: capital original
@@ -67,12 +69,14 @@ def paso(n: int, titulo: str) -> None:
     print(f"\n{'=' * 64}\n{n}/4  {titulo}\n{'=' * 64}")
 
 
-async def main(provider: str | None) -> int:
+async def main(provider: str | None, bridge: bool) -> int:
     fallos: list[str] = []
 
     paso(1, "inferencia pelada")
-    async with Motor(provider=provider) as motor:
-        donde = f"delegada a {provider[:16]}..." if motor.delegado else "local"
+    motor_ctx = MotorBridge() if bridge else Motor(provider=provider)
+    async with motor_ctx as motor:
+        donde = ("bridge HTTP" if bridge else
+                 f"delegada a {provider[:16]}..." if motor.delegado else "SDK local")
         print(f"  modelo listo en {motor.segundos_de_carga:.1f}s ({donde})")
 
         r = await motor.completar(
@@ -152,4 +156,6 @@ async def main(provider: str | None) -> int:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--provider", help="clave publica del provider (delegated inference)")
-    raise SystemExit(asyncio.run(main(ap.parse_args().provider)))
+    ap.add_argument("--bridge", action="store_true", help="usar el bridge HTTP (tunel SSH)")
+    a = ap.parse_args()
+    raise SystemExit(asyncio.run(main(a.provider, a.bridge)))
