@@ -96,7 +96,13 @@ def bloque(filas: list[tuple], minutos: float | None = None,
     return "\n".join(L)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    """``argv=None`` parsea ``sys.argv`` (uso standalone). Cuando ``cli.py``
+    delega acá para ``riesgo cartera``, pasa una lista explicita -- si
+    dejara que esto vuelva a leer ``sys.argv``, el token "cartera" que el
+    subparser de cli.py ya consumio seguiria ahi y este parser lo rechazaria
+    como argumento no reconocido.
+    """
     # La consola de Windows por defecto es cp1252 y no puede con los bloques.
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -104,7 +110,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dataset", default="dataset")
     ap.add_argument("--corte", type=float, default=None)
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     from .evaluar import HOY, construir_campos
     from .motor import analizar

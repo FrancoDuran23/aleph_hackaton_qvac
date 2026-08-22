@@ -277,7 +277,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.comando == "cartera":
         from .resumen import main as resumen_main
-        return resumen_main()
+        return resumen_main(["--dataset", args.dataset])
 
     base = Path(args.dataset)
     carpeta = base / args.cliente
