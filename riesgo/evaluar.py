@@ -15,8 +15,10 @@ Uso:  .venv/Scripts/python -m riesgo.evaluar [--corte 1000000]
 from __future__ import annotations
 
 import argparse
+import asyncio
 import collections
 import json
+import time
 from datetime import date
 from pathlib import Path
 
@@ -109,15 +111,58 @@ def barrido_corte(gt: list[dict]) -> None:
         print(f"    ${corte:>9,}    {ok:>2}/{len(filas)}      {legales:>2}/{len(filas)}")
 
 
+async def evaluar_real(gt: list[dict], corte: float, limite: int | None,
+                       bridge: bool, provider: str | None) -> list[tuple]:
+    """Extrae con el modelo desde los PDFs y corre el motor sobre eso."""
+    from .bridge import MotorBridge
+    from .documentos import leer_carpeta
+    from .extraccion import documentos_ilegibles, extraer_carpeta
+    from .llm import Motor
+
+    casos = gt[:limite] if limite else gt
+    filas = []
+    motor_ctx = MotorBridge() if bridge else Motor(provider=provider)
+    inicio = time.perf_counter()
+
+    async with motor_ctx as motor:
+        for i, c in enumerate(casos, 1):
+            docs = leer_carpeta(Path("dataset") / c["carpeta"])
+            t0 = time.perf_counter()
+            campos = await extraer_carpeta(motor, docs)
+            v = analizar(c["cliente_id"], campos, nombre=c["nombre"],
+                         docs_ilegibles=documentos_ilegibles(docs),
+                         corte=corte, hoy=HOY)
+            ok = v.ruteo == c["ruteo_esperado"]
+            filas.append((c, v, ok))
+            print(f"  {i:>2}/{len(casos)}  {c['carpeta']:<15} "
+                  f"{v.ruteo:<15} {v.confianza:<13} {'ok' if ok else 'MAL':<4} "
+                  f"{time.perf_counter() - t0:.0f}s")
+
+    print(f"\ntotal {(time.perf_counter() - inicio) / 60:.1f} min "
+          f"({(time.perf_counter() - inicio) / len(casos):.0f}s por caso)")
+    return filas
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--corte", type=float, default=CORTE_DESCUBIERTO)
+    ap.add_argument("--real", action="store_true", help="extraer con el modelo")
+    ap.add_argument("--bridge", action="store_true")
+    ap.add_argument("--provider")
+    ap.add_argument("--casos", type=int, help="limitar cantidad de casos")
     args = ap.parse_args()
 
     if not GT.exists():
         print(f"falta {GT} -- corre:  tar xzf dataset_riesgo.tar.gz")
         return 1
     gt = json.loads(GT.read_text(encoding="utf-8"))
+
+    if args.real:
+        print("EXTRACCION REAL -- el modelo lee los PDFs")
+        filas = asyncio.run(evaluar_real(gt, args.corte, args.casos,
+                                         args.bridge, args.provider))
+        _metricas(f"REAL -- extraccion con modelo, corte ${args.corte:,.0f}", filas)
+        return 0
 
     _metricas(f"ORACLE -- extraccion perfecta, corte ${args.corte:,.0f}",
               evaluar(gt, sin_ocr=False, corte=args.corte))
