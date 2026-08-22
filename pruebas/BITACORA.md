@@ -499,7 +499,43 @@ python -m riesgo.evaluar --real --bridge
 
 Salida completa en [`salida-real-20casos.txt`](salida-real-20casos.txt).
 
-_(pendiente de completar con el resultado)_
+```
+14 FIRMES         → 14/14 correctos      precisión 100%
+ 6 CON RESERVAS   →  2/6  correctos
+
+Cobertura: 70%
+Contradicciones GRAVES: 6/11
+11,0 min (33 s por caso)
+```
+
+**El resultado es idéntico al de F2**, la simulación con extracción perfecta y
+OCR faltante: mismo 14/14, misma cobertura, exactamente los mismos 4 casos mal
+(`4421`, `4470`, `4512`, `4519`).
+
+**La extracción no introdujo un solo error.** Sobre los 14 casos con documentos
+legibles, un modelo de 1,2 GB extrajo tan bien como el ground truth. Todo lo
+que el sistema erra es atribuible al OCR que falta, nada al modelo.
+
+Los 4 errores son los 4 casos con escritura escaneada, **los 4 marcados CON
+RESERVAS**. Cero errores silenciosos.
+
+| Caso | Esperado | Obtenido | Confianza |
+|---|---|---|---|
+| `cliente_4421` | LEGALES | COBRANZAS | CON RESERVAS |
+| `cliente_4470` | LEGALES | COBRANZAS | CON RESERVAS |
+| `cliente_4512` | LEGALES | COBRANZAS | CON RESERVAS |
+| `cliente_4519` | LEGALES | COBRANZAS | CON RESERVAS |
+
+**Latencia por caso según legibilidad:**
+
+| | Llamadas al modelo | Segundos |
+|---|---|---|
+| Documentos legibles | 2 (contrato + escritura) | ~38 s |
+| Escritura escaneada | 1 (la escritura se saltea) | ~21 s |
+
+Un documento ilegible no se manda al modelo: no hay texto que extraer. Eso
+abarata los casos escaneados, que son justamente los que menos información
+aportan.
 
 ---
 
