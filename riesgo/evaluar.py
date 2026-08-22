@@ -26,7 +26,7 @@ from .modelo import CON_RESERVAS, FIRME, Campo
 from .motor import analizar
 from .ruteo import CORTE_DESCUBIERTO
 
-GT = Path("dataset/ground_truth.json")
+DATASET = Path("dataset")
 HOY = date(2026, 8, 22)
 
 ESCRITURA = "escritura.pdf"
@@ -126,7 +126,7 @@ async def evaluar_real(gt: list[dict], corte: float, limite: int | None,
 
     async with motor_ctx as motor:
         for i, c in enumerate(casos, 1):
-            docs = leer_carpeta(Path("dataset") / c["carpeta"])
+            docs = leer_carpeta(DATASET / c["carpeta"])
             t0 = time.perf_counter()
             campos = await extraer_carpeta(motor, docs)
             v = analizar(c["cliente_id"], campos, nombre=c["nombre"],
@@ -150,8 +150,13 @@ def main() -> int:
     ap.add_argument("--bridge", action="store_true")
     ap.add_argument("--provider")
     ap.add_argument("--casos", type=int, help="limitar cantidad de casos")
+    ap.add_argument("--dataset", default="dataset", help="carpeta del set a evaluar")
     args = ap.parse_args()
 
+    global DATASET
+    DATASET = Path(args.dataset)
+
+    GT = DATASET / "ground_truth.json"
     if not GT.exists():
         print(f"falta {GT} -- corre:  tar xzf dataset_riesgo.tar.gz")
         return 1

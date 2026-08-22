@@ -66,3 +66,4 @@ docker-compose.yml
 
 # Salidas de corridas: se regeneran, no se versionan
 pruebas/*.txt
+dataset99/

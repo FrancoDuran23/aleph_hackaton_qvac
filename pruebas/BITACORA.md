@@ -654,6 +654,69 @@ que lo justifique es código sin probar.
 
 ---
 
+## I. Holdout — el número sobre datos nunca vistos
+
+```bash
+python gen_dataset.py --n 20 --seed 99 --out ./dataset99
+python -m riesgo.evaluar --real --bridge --dataset dataset99
+```
+
+Los 20 casos de desarrollo están gastados: el fix de `aviso_previo` (sección H)
+se validó contra ellos. Este set se generó con otra semilla y el sistema no lo
+vio durante el desarrollo.
+
+### I1 · El set es genuinamente distinto
+
+| | desarrollo (seed 1) | holdout (seed 99) |
+|---|---|---|
+| Ruteo esperado | 12 LEG · 6 COB · 2 REF | 9 LEG · 8 COB · 3 REF |
+| Contradicciones graves | 11 | 4 |
+| Escrituras escaneadas | 6/20 | **12/20** |
+| Casos con aviso previo | 10 | 7 |
+
+El doble de escrituras escaneadas: es un set **más difícil** para el estado
+actual, donde el OCR todavía no está enchufado.
+
+### I2 · Resultado
+
+```
+ 8 FIRMES        -> 8/8 correctos     precision 100%
+12 CON RESERVAS  -> 5/12 correctos
+
+Cobertura: 40%
+Contradicciones GRAVES: 2/4
+9,4 min · 28 s por caso
+```
+
+Salida completa en [`salida-holdout-seed99.txt`](salida-holdout-seed99.txt).
+
+### I3 · La lectura
+
+| | desarrollo | holdout |
+|---|---|---|
+| Escaneadas | 6/20 | 12/20 |
+| Cobertura | 70% | 40% |
+| **Precisión sobre FIRMES** | **14/14** | **8/8** |
+| Errores silenciosos | 0 | 0 |
+
+**La cobertura sigue al input; la precisión queda quieta.** Al duplicar el
+papel ilegible el sistema declara la mitad de los casos — que es el
+comportamiento correcto, no una degradación.
+
+Los 7 casos mal ruteados del holdout salieron **los 7 CON RESERVAS**.
+
+### I4 · Lo que NO se hizo
+
+Ninguno de los 7 errores del holdout se corrigió. Todos vienen de escrituras
+que no se pueden leer sin OCR, y ajustar algo mirándolos sería ajustar al test
+set — la versión sutil del input elegido a dedo.
+
+Quedan como límite conocido: **sin OCR, el sistema resuelve con confianza plena
+solo los casos cuyos documentos son legibles.** Eso ya está declarado en cada
+veredicto.
+
+---
+
 ## G. Pendientes de verificar
 
 | Qué | Por qué importa |

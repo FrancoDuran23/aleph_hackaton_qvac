@@ -86,6 +86,48 @@ argumento para pagar los 12 minutos de la corrida completa.
 
 Detalle en [`pruebas/BITACORA.md`](pruebas/BITACORA.md), sección H.
 
+## El número, sobre datos nunca vistos
+
+Los 20 casos de desarrollo están gastados: el fix de `aviso_previo` se validó
+contra ellos. El resultado que se presenta sale de un set generado con otra
+semilla, que el sistema nunca vio.
+
+| | desarrollo | **holdout (seed 99)** |
+|---|---|---|
+| Escrituras escaneadas | 6/20 | **12/20** |
+| Cobertura (casos FIRMES) | 70% | **40%** |
+| **Precisión sobre FIRMES** | **14/14** | **8/8** |
+| Errores silenciosos | 0 | **0** |
+
+**La cobertura sigue al input; la precisión no se mueve.**
+
+Con el doble de papel escaneado el sistema declara la mitad de los casos, que
+es exactamente lo que tiene que hacer: no puede leer esas escrituras y no
+pretende que sí. Sobre lo que declara resolver, no se equivocó ni una vez en
+ninguno de los dos conjuntos.
+
+Las dos mitades del argumento: **sabe qué sabe, y lo que sabe lo sabe bien.**
+
+Y en las dos corridas, cada caso mal ruteado salió marcado CON RESERVAS. El
+sistema puede equivocarse; lo que no hace es equivocarse en silencio.
+
+## La línea entre arreglar el sistema y arreglar el número
+
+El fix de `aviso_previo` salió de una **regla de dominio** —¿quién escribió la
+carta, el deudor o el banco?— y no de mirar qué casos fallaban. Por eso vale.
+
+La alternativa era mirar los 7 casos rotos y hacer que pasaran: buscar
+`"cobranzas"` en el remitente, que es la dirección que usa este dataset.
+Habría dado el mismo 20/20 y habría sido **otra medición circular** —
+funcionaría con estos documentos y con ningún otro.
+
+Es la misma trampa que el corte de descubierto: un número que sale bien porque
+lo ajustamos al set con el que lo medimos.
+
+> **Si mañana movemos un umbral para que tres casos del holdout pasen,
+> cruzamos la línea.** Un fallo nuevo sobre datos frescos se anota como límite
+> conocido; no se arregla mirándolo.
+
 ## Estructura
 
 ```
