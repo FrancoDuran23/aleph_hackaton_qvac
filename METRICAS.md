@@ -89,11 +89,24 @@ El número que sí depende de nosotros es **precisión sobre los casos FIRMES**,
 | Paso | Qué verifica | Resultado |
 |---|---|---|
 | 1 | El modelo carga y responde | OK |
-| 2 | `temp=0` llega al motor | `['75', '75', '75']` en 3 corridas |
+| 2 | `temp=0` llega al motor | 3 corridas, mismo `sha256` |
 | 3 | `response_format` restringe el decoder | parsea sin limpiar nada |
 | 4 | Extracción contra valores conocidos | **5/5 campos** |
 
-**Paso 2 — determinismo.** Tres corridas del mismo prompt devuelven el mismo número. Es la prueba de que `generationParams` viaja anidado y de que el campo se llama `temp`, no `temperature`. Sin esto la inferencia corre con sampling por defecto y **ninguna medición posterior es reproducible**.
+**Paso 2 — determinismo, verificado byte a byte** (`riesgo/medir.py`):
+
+```
+corrida 1:  sha256=8192b6a9b1cf   194 chars
+corrida 2:  sha256=8192b6a9b1cf   194 chars
+corrida 3:  sha256=8192b6a9b1cf   194 chars
+```
+
+Tres extracciones completas, hash idéntico. No es una respuesta corta que
+coincide por azar: son 194 caracteres de JSON estructurado.
+
+Es la prueba de que `generationParams` viaja anidado y de que el campo se llama
+`temp`, no `temperature`. Sin esto la inferencia corre con sampling por defecto
+y **ninguna medición posterior es reproducible**.
 
 **Paso 3 — JSON garantizado, no pedido.** Salida cruda del modelo, sin post-procesar:
 
@@ -118,12 +131,24 @@ En el paso 4 el modelo distinguió `capital_original` de `capital_adeudado` esta
 
 > Depende del modelo y del hardware. Ver la comparativa de arriba.
 
+Medida con `riesgo/medir.py`, descartando la primera llamada (cold start).
+
 | Métrica | Valor |
 |---|---|
-| Extracción de 6 campos | **9,8 s** |
-| Throughput | 17 tok/s (CPU) |
+| **Extracción de 6 campos, en caliente** | **9,3 s** |
+| Rango sobre las corridas | 9,2 – 9,3 s |
+| Throughput | 18,2 tok/s (CPU) |
+| Primera llamada (en frío) | 9,5 s |
 | Time to first token | 485 ms |
-| Proyección: 20 casos × 4 documentos | ~13 min por iteración |
+| **Proyección: 20 casos × 4 documentos** | **~12 min por iteración** |
+
+La dispersión es de una décima: la latencia es predecible, no un promedio de
+valores dispares. Sirve para presupuestar.
+
+**Qué habilita este número.** A 9,3 s por llamada, un segundo pase de
+verificación sobre los campos dudosos cuesta ~12 min más por iteración. Es
+pagable una vez, no en cada vuelta de desarrollo. Iterar sobre 5 casos y correr
+los 20 solo al final.
 
 ### La palanca que más rindió: apagar el razonamiento
 

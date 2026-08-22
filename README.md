@@ -1,115 +1,124 @@
-# hackaton
+# riesgo — análisis de carpetas crediticias con IA local
 
-Repo base para hackathons: bot de WhatsApp + chat web que responden
-preguntas sobre una carpeta de PDFs que vos cargás, con retrieval híbrido
-+ multihop sobre pgvector, y un cache de respuestas precalentadas para no
-depender de la red durante el pitch.
+**Aleph Hackathon 2026 · Track QVAC**
 
-**Cero datos de dominio acá adentro.** `data/pdfs/` y `demo/preguntas.json`
-están vacíos/gitignoreados a propósito — los llenás vos el día del evento.
+Una CLI que hace, en segundos, el trabajo que hoy le lleva una o dos horas a un
+analista de riesgo cuando un cliente entra en mora: leer la carpeta completa
+—contrato, escritura de la garantía, recibos, correspondencia—, calcular la
+exposición, detectar contradicciones entre documentos, redactar una nota interna
+y rutear el caso.
 
-## Arrancar en 5 minutos
-
-1. **Variables de entorno**:
-   ```bash
-   cp .env.example .env
-   ```
-   Completá `ANTHROPIC_API_KEY` y `GEMINI_API_KEY`. `WASENDER_API_TOKEN` /
-   `WASENDER_SESSION_ID` solo si vas a probar WhatsApp real (ver más abajo).
-
-2. **Levantar todo**:
-   ```bash
-   docker compose up --build
-   ```
-   Esto levanta Postgres con pgvector + la app FastAPI en un solo comando.
-   Esperá a que el log diga `Uvicorn running on http://0.0.0.0:8000`.
-
-3. **Cargar tus PDFs**: poné los archivos en `data/pdfs/`, después:
-   ```bash
-   ./scripts/ingest.sh
-   ```
-   (o `docker compose exec app python -m toolkit.hybrid_rag.ingest` a mano).
-   Podés correrlo de nuevo cuantas veces quieras — cada corrida reindexa
-   todo de cero, no hay que borrar nada a mano.
-
-4. **Probar el chat**: abrí `http://localhost:8000` en el navegador.
-
-Listo — desde acá, lo único que falta es lógica de dominio.
-
-## Antes del pitch: precalentar respuestas
-
-Si vas a mostrar un recorrido de preguntas específico frente al jurado,
-no dependas de que la red/API estén bien en el momento:
-
-1. Completá `demo/preguntas.json` (copiá `demo/preguntas.example.json`
-   como punto de partida) con las preguntas exactas que vas a hacer.
-2. Corré `./scripts/warm_cache.sh` — esto ejecuta el pipeline real una vez
-   por pregunta (necesita red) y guarda las respuestas en
-   `demo/cache_calentado.json`.
-3. Durante la demo, cualquier pregunta que matchee (exacta o parecida) con
-   una precalentada responde al instante desde ese archivo, sin tocar la
-   red ni la base de datos. Si algo se cae en el medio del pitch, el
-   recorrido ensayado sigue funcionando igual.
-
-Preguntas fuera del recorrido siguen yendo por el camino normal
-(retrieval + LLM en vivo).
-
-## Estructura del repo
+**Toda la inferencia corre local.** Ningún dato del cliente sale de la máquina.
+Para una cartera crediticia eso no es una preferencia técnica: es la diferencia
+entre poder usar la herramienta y no poder.
 
 ```
-toolkit/            piezas reusables, documentadas, extraídas de proyectos
-                     que ya funcionan (ver toolkit/README.md)
-  qvac_brain/        inferencia local QVAC: generación + embeddings
-  whatsapp_wasender/ cliente de WASenderApi
-  hybrid_rag/        ingesta de PDFs + búsqueda híbrida RRF + multihop
+CLIENTE 4471 — Juan Perez
+Disparo: 32 dias de atraso
 
-app/                 la app de este hackathon puntual, arma las piezas del
-                     toolkit para responder por WhatsApp y por web
-  main.py            rutas FastAPI: /webhook, /chat, /, /health
-  answer.py          responder(pregunta, historial) -- un solo lugar,
-                     lo usan tanto el webhook como el chat
-  precache.py        cache de respuestas precalentadas para el pitch
-  static/            UI de chat (HTML/CSS/JS sin build step)
+EXPOSICION
+  Capital adeudado    $2.800.000   [contrato p.3]    ✓ alta
+  Garantia: terreno   $2.000.000   [escritura p.1]   ⚠ media (ocr)
+  Descubierto           $800.000
 
-data/pdfs/           tus PDFs van acá (vacío en el repo)
-demo/                preguntas del recorrido + cache calentado (vacío en el repo)
-scripts/             atajos de docker compose exec
+⚠ CONTRADICCION — GRAVE
+  Escritura a nombre de "M. Perez"   [escritura p.1]
+  Titular del prestamo: "Juan Perez" [contrato p.1]
+  → Garantia posiblemente no ejecutable.
+
+RUTEO → LEGALES  (defecto formal en la garantia)
 ```
 
-## Dónde escribir tu lógica de dominio
+## La idea que sostiene el diseño
 
-- **Cambiar cómo se arma la respuesta**: `app/answer.py` — ahí está el
-  system prompt y qué se le pasa al modelo.
-- **Cambiar qué se busca**: `toolkit/hybrid_rag/multihop.py` y
-  `retrieval.py` si necesitás filtros o ranking distinto.
-- **Agregar tool use** (acciones, no solo respuestas): el SDK de QVAC
-  soporta `tools` en `completion()`, pero `qvac_brain` todavía no lo
-  expone. Hay que agregarlo ahí primero.
+**El modelo extrae y redacta. El código decide.**
 
-## WhatsApp: la letra chica
+Un modelo chico es bueno copiando datos de un texto y malo en aritmética,
+comparaciones y reglas de negocio. Así que el LLM solo hace lo primero: la
+cuenta del descubierto, la detección de contradicciones y el ruteo son Python
+determinista.
 
-WASenderApi necesita pegarle a tu webhook por una URL pública — en
-`localhost` no le llega nada. Para probarlo en el hackathon:
+**Y nada frena el ruteo.** El sistema siempre produce un veredicto; lo que varía
+es cuánta confianza declara. Un caso sale `FIRME` solo si ningún dato que
+influyó en la decisión arrastra reservas. Si algo no se pudo garantizar —el
+valor no aparece en el documento, el OCR leyó con poca confianza, un PDF no
+produjo texto— el caso rutea igual pero sale `CON RESERVAS`, con el detalle de
+qué falló.
+
+Eso permite reportar la métrica que importa: **precisión sobre los casos
+FIRMES**. Ver [`METRICAS.md`](METRICAS.md).
+
+## Estructura
+
+```
+riesgo/
+  modelo.py          Campo, Hallazgo, Advertencia, Veredicto
+  comparacion.py     nombres por fuzzy, números por dígitos exactos
+  contradicciones.py los cinco chequeos entre documentos
+  calculo.py         descubierto, cobertura, puntualidad
+  ruteo.py           a qué área va el caso y por qué
+  motor.py           orquesta un caso: analizar() -> Veredicto
+
+  llm.py             cliente QVAC vía SDK (local o delegado por DHT)
+  bridge.py          cliente QVAC vía HTTP
+  provider.py        lado servidor de delegated inference
+
+  hito1.py           verificación de punta a punta contra el modelo
+  medir.py           determinismo y latencia
+  evaluar.py         métricas contra el ground truth
+  calibrar.py        barrido de umbrales
+```
+
+## Arrancar
 
 ```bash
-ngrok http 8000
+python -m venv .venv
+.venv/Scripts/pip install -r requirements.txt \
+  -f https://github.com/tetherto/qvac/releases/expanded_assets/sdk-v0.17.0
+
+tar xzf dataset_riesgo.tar.gz          # 20 carpetas sintéticas + ground truth
+cp .env.example .env                   # apuntar QVAC_BRIDGE_URL al endpoint
 ```
 
-y configurá esa URL (`https://....ngrok.../webhook`) como webhook en el
-dashboard de WASenderApi. **Para la demo frente al jurado, usá la pantalla
-de chat web** (`http://localhost:8000`) — no depende de ngrok ni de que
-WASenderApi esté funcionando ese día. WhatsApp queda como plus si sobra
-tiempo de armar el túnel.
+Verificar que la inferencia funciona antes de cualquier otra cosa:
 
-## Troubleshooting rápido
+```bash
+.venv/Scripts/python -m riesgo.hito1 --bridge
+```
 
-- **`docker compose up` no arranca / el healthcheck de postgres no pasa**:
-  `docker compose logs postgres` — normalmente es un volumen viejo con
-  datos de otra corrida. `docker compose down -v` y volver a levantar (esto
-  borra los datos indexados, hay que reingestar).
-- **`/chat` tarda mucho**: la inferencia corre en CPU. Una respuesta larga
-  tarda decenas de segundos; es esperable. Si en cambio falla rápido, el
-  motor de inferencia no está accesible en `QVAC_BRIDGE_URL`.
-- **El chat responde "no se encontró contexto relevante"**: todavía no
-  corriste `./scripts/ingest.sh`, o los PDFs no tenían texto extraíble
-  (escaneados sin OCR, por ejemplo).
+Corre cuatro pasos en orden, y cada uno valida el anterior: el modelo responde,
+`temp=0` llega de verdad al motor, `response_format` restringe el decoder, y la
+extracción da los valores correctos. Si algo falla, el mensaje dice cuál de los
+cuatro.
+
+## Medir
+
+```bash
+.venv/Scripts/python -m riesgo.medir --bridge     # determinismo y latencia
+.venv/Scripts/python -m riesgo.evaluar            # precisión sobre FIRMES
+.venv/Scripts/python -m riesgo.calibrar           # umbrales
+```
+
+`medir` compara varias corridas byte a byte. Si difieren, `generationParams` no
+está llegando y **cualquier medición posterior es ruido** — conviene correrlo
+antes de creerle a un número.
+
+## Dos cosas del SDK que cuestan horas
+
+**El parámetro de temperatura se llama `temp`, no `temperature`,** y va anidado
+en `generationParams`. Una clave desconocida se descarta en silencio: la
+inferencia queda con sampling por defecto y nada lo delata.
+
+**`response_format` con `json_schema` se compila a una gramática GBNF.** El
+decoder no puede emitir nada que viole el schema: ni backticks, ni JSON
+truncado, ni `"no encontrado"` donde el schema declara `number | null`. Es la
+diferencia entre pedir JSON y garantizarlo.
+
+## Documentos
+
+| | |
+|---|---|
+| [`SDD-mi-parte.md`](SDD-mi-parte.md) | diseño del motor: extracción, contradicciones, ruteo |
+| [`SDD-2.md`](SDD-2.md) | decisiones y correcciones posteriores |
+| [`METRICAS.md`](METRICAS.md) | todo lo medido, con el comando que lo reproduce |
+| [`onboarding-equipo.md`](onboarding-equipo.md) | para sumarse al proyecto |

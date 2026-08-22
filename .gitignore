@@ -53,3 +53,13 @@ toolkit/claude_brain/errors_log.md
 
 # Infra propia de inferencia: no es parte del proyecto
 scripts/qvac/
+
+# Andamiaje del repo plantilla: no es parte de este proyecto
+app/
+toolkit/
+tests/
+demo/
+data/
+scripts/
+Dockerfile
+docker-compose.yml

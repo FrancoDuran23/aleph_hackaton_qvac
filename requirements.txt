@@ -1,6 +1,16 @@
-fastapi>=0.110.0
-uvicorn>=0.27.0
-psycopg[binary]>=3.1.0
+# Inferencia local
+tetherto-qvac-sdk>=0.17.1   # instalar con:
+#   pip install tetherto-qvac-sdk \
+#     -f https://github.com/tetherto/qvac/releases/expanded_assets/sdk-v0.17.0
+
+# Lectura de documentos
 pypdf>=4.0.0
+python-dateutil>=2.9.0
+
+# Comparación de valores
+jellyfish>=1.2.0        # Jaro-Winkler, para nombres
+rapidfuzz>=3.14.0       # token_sort_ratio, para nombres y domicilios
+
+# Transporte y salida
 httpx>=0.27.0
-python-dotenv>=1.0.0
+rich>=15.0.0
