@@ -23,11 +23,10 @@ import json
 import re
 import sys
 
-from google import genai
 
-from ..claude_brain import brain
+from .. import qvac_brain as brain
 from . import retrieval
-from .embeddings import embed
+from ..qvac_brain.embeddings import embed
 
 MAX_HOPS = 3
 TOP_K_POR_HOP = 5
@@ -57,27 +56,30 @@ def _parsear_json_sub_consultas(texto: str) -> list[str]:
 
 
 def descomponer_pregunta(pregunta: str) -> list[str]:
-    """Gemini Flash primero, Claude Haiku si falla, passthrough (la pregunta
-    tal cual, sin descomponer) si fallan los dos. Mismo orden de fallback
-    que query-decomposer.ts en talentbase."""
+    """Descompone la pregunta con el modelo local; passthrough si falla.
+
+    Antes esto llamaba a Gemini Flash primero y caía a Claude Haiku. Las dos
+    eran llamadas de red, que es justamente lo que QVAC viene a sacar del medio:
+    ahora el único camino es el modelo local.
+
+    El passthrough (devolver la pregunta sin descomponer) se mantiene como
+    última red: una descomposición fallida no debería tumbar la búsqueda, sólo
+    hacerla de un solo hop.
+    """
     prompt = _DECOMPOSE_PROMPT.format(max_hops=MAX_HOPS, pregunta=pregunta)
 
     try:
-        client = genai.Client()
-        response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
-        return _parsear_json_sub_consultas(response.text)
-    except Exception as e:
-        print(f"aviso: descomposición con Gemini falló ({e}), pruebo con Claude Haiku", file=sys.stderr)
-
-    try:
-        texto, _, _ = brain.llamar_claude_sync(
+        texto, _, _ = brain.llamar_llm_sync(
             messages=[{"role": "user", "content": prompt}],
             system="Respondés únicamente con el JSON pedido, sin explicaciones.",
-            modelo="claude-haiku-4-5-20251001",
+            # Los modelos con razonamiento gastan varios cientos de tokens
+            # pensando antes de emitir el JSON. Con el default de 500 la
+            # respuesta se cortaba antes de cerrar el bloque.
+            max_tokens=800,
         )
         return _parsear_json_sub_consultas(texto)
     except Exception as e:
-        print(f"aviso: descomposición con Claude también falló ({e}), sigo sin multihop (passthrough)", file=sys.stderr)
+        print(f"aviso: descomposición local falló ({e}), sigo sin multihop (passthrough)", file=sys.stderr)
 
     return [pregunta]
 

@@ -4,7 +4,7 @@ lugar en vez de duplicarse entre los dos canales.
 """
 import sys
 
-from toolkit.claude_brain import brain
+from toolkit import qvac_brain as brain
 from toolkit.hybrid_rag.multihop import buscar_multihop
 
 from . import precache

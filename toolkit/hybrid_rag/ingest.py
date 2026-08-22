@@ -18,7 +18,7 @@ from pathlib import Path
 import pypdf
 
 from . import db
-from .embeddings import dim, embed
+from ..qvac_brain.embeddings import dim, embed
 
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 150
