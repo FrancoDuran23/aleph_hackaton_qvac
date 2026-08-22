@@ -46,16 +46,16 @@ def rutear(graves: list[Hallazgo], derivados: dict, aviso_previo: bool | None,
 
     if graves:
         tipos = ", ".join(sorted({h.tipo for h in graves}))
-        return LEGALES, f"defecto formal en la garantia ({tipos})", INFLUYEN["contradiccion_grave"]
+        return LEGALES, f"formal defect in the collateral ({tipos})", INFLUYEN["contradiccion_grave"]
 
     if desc is not None and desc > corte:
-        return LEGALES, (f"descubierto de {_pesos(desc)} sobre el corte "
-                         f"de {_pesos(corte)}"), INFLUYEN["descubierto"]
+        return LEGALES, (f"shortfall of {_pesos(desc)} over the "
+                         f"{_pesos(corte)} threshold"), INFLUYEN["descubierto"]
 
     if punt is not None and punt < PUNTUALIDAD_MINIMA:
-        return LEGALES, f"puntualidad de {punt:.0%}, bajo el minimo de {PUNTUALIDAD_MINIMA:.0%}", INFLUYEN["puntualidad"]
+        return LEGALES, f"on-time rate {punt:.0%}, below the {PUNTUALIDAD_MINIMA:.0%} minimum", INFLUYEN["puntualidad"]
 
     if cob is not None and cob >= COBERTURA_REFINANCIABLE and aviso_previo:
-        return REFINANCIACION, f"cobertura de {cob:.0%} y aviso previo cursado", INFLUYEN["cobertura"]
+        return REFINANCIACION, f"coverage {cob:.0%} and prior notice given", INFLUYEN["cobertura"]
 
-    return COBRANZAS, "sin defectos formales ni descubierto sobre el corte", INFLUYEN["descubierto"]
+    return COBRANZAS, "no formal defects and shortfall within the threshold", INFLUYEN["descubierto"]

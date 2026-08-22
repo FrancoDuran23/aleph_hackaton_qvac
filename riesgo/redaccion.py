@@ -16,16 +16,18 @@ import json
 
 from .modelo import Veredicto
 
-SISTEMA = ("Sos un analista de riesgo crediticio. Escribís notas internas "
-           "breves, en español rioplatense neutro, sin saludos ni firma.")
+SISTEMA = ("You are a credit risk analyst. You write brief internal notes in "
+           "neutral English, with no greetings or signature.")
 
-_PLANTILLA = """Redactá una nota interna de 3 a 5 líneas para un analista de riesgo.
+_PLANTILLA = """Write a 3 to 5 line internal note for a risk analyst.
 
-Usá ÚNICAMENTE estos hechos. No agregues información, estimaciones ni
-recomendaciones que no estén acá. No repitas los números en formato de lista:
-escribí prosa.
+Use ONLY these facts. Do not add information, estimates, or recommendations
+that are not here. Do not repeat the numbers as a list: write prose.
 
 {hechos}"""
+
+# Etiqueta de ruteo en ingles para la nota; el valor interno (v.ruteo) no cambia.
+_RUTEO_EN = {"LEGALES": "LEGAL", "REFINANCIACION": "REFINANCE", "COBRANZAS": "COLLECTIONS"}
 
 
 def hechos_de(v: Veredicto) -> dict:
@@ -36,28 +38,30 @@ def hechos_de(v: Veredicto) -> dict:
     inventar referencias.
     """
     d = v.derivados
-    hechos: dict = {"cliente": v.nombre, "ruteo": v.ruteo, "motivo": v.motivo}
+    hechos: dict = {"client": v.nombre,
+                    "routing": _RUTEO_EN.get(v.ruteo, v.ruteo),
+                    "reason": v.motivo}
 
     if d.get("descubierto") is not None:
-        hechos["descubierto"] = f"${d['descubierto']:,.0f}".replace(",", ".")
+        hechos["shortfall"] = f"${d['descubierto']:,.0f}".replace(",", ".")
     if d.get("cobertura") is not None:
-        hechos["cobertura_garantia"] = f"{d['cobertura']:.0%}"
+        hechos["collateral_coverage"] = f"{d['cobertura']:.0%}"
     if d.get("puntualidad") is not None:
-        hechos["pagos_puntuales"] = f"{d['puntualidad']:.0%}"
+        hechos["on_time_payments"] = f"{d['puntualidad']:.0%}"
 
     if v.hallazgos:
-        hechos["contradicciones"] = [
-            {"tipo": h.tipo, "gravedad": h.gravedad, "estado": h.estado}
+        hechos["contradictions"] = [
+            {"type": h.tipo, "severity": h.gravedad, "state": h.estado}
             for h in v.hallazgos
         ]
     reservas = [a.motivo for a in v.advertencias if a.degrada]
     if reservas:
-        hechos["no_se_pudo_verificar"] = reservas
+        hechos["could_not_verify"] = reservas
 
     return hechos
 
 
-async def redactar(motor, v: Veredicto, max_tokens: int = 220) -> str | None:
+async def redactar(motor, v: Veredicto, max_tokens: int = 512) -> str | None:
     """La nota, o None si el modelo no responde. Nunca levanta."""
     prompt = _PLANTILLA.format(
         hechos=json.dumps(hechos_de(v), ensure_ascii=False, indent=2))
@@ -66,5 +70,12 @@ async def redactar(motor, v: Veredicto, max_tokens: int = 220) -> str | None:
                                   system=SISTEMA, max_tokens=max_tokens)
     except Exception:
         return None
-    texto = r.texto.strip()
+    # QWEN3 emite su razonamiento en <think>...</think>; la nota es lo que va
+    # despues. Sin esto, el cierre del bloque se cuela en la salida (y el
+    # presupuesto de tokens se lo comia el razonamiento). max_tokens mas alto
+    # deja lugar para el razonamiento y la nota completa.
+    texto = r.texto
+    if "</think>" in texto:
+        texto = texto.rsplit("</think>", 1)[-1]
+    texto = texto.strip()
     return texto or None

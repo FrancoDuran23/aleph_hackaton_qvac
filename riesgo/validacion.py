@@ -36,10 +36,10 @@ def separador_miles_roto(crudo: object) -> str | None:
     if "." not in entero:
         return None
     if entero.endswith("."):
-        return "separador de miles al final de la cifra"
+        return "thousands separator at the end of the figure"
     for grupo in entero.split(".")[1:]:
         if len(grupo) != 3:
-            return f"grupo de miles con {len(grupo)} digito(s), no 3"
+            return f"thousands group with {len(grupo)} digit(s), not 3"
     return None
 
 
@@ -50,5 +50,5 @@ def cobertura_implausible(garantia: float | None,
         return None
     cob = garantia / capital
     if cob < COBERTURA_MIN or cob > COBERTURA_MAX:
-        return f"cobertura {cob:.4g} fuera de [{COBERTURA_MIN}, {COBERTURA_MAX}]"
+        return f"coverage {cob:.4g} outside [{COBERTURA_MIN}, {COBERTURA_MAX}]"
     return None

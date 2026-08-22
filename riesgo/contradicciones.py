@@ -58,7 +58,7 @@ def titular_garantia(titular_contrato: Campo, titular_escritura: Campo) -> Halla
     """La escritura a nombre de otra persona: la garantia puede no ser ejecutable."""
     if not _comparables(titular_contrato, titular_escritura):
         return Hallazgo("titular_garantia", GRAVE, DESCARTADA,
-                        "falta el titular de alguno de los dos documentos")
+                        "one of the two documents is missing the holder")
 
     sim = similitud_nombres(str(titular_contrato.valor), str(titular_escritura.valor))
     difieren = not misma_persona(str(titular_contrato.valor), str(titular_escritura.valor))
@@ -69,10 +69,10 @@ def titular_garantia(titular_contrato: Campo, titular_escritura: Campo) -> Halla
     return Hallazgo(
         "titular_garantia", GRAVE,
         _estado(titular_contrato, titular_escritura, difieren, dudoso),
-        f"Escritura a nombre de {titular_escritura.valor!r} "
-        f"{titular_escritura.cita()}; titular del prestamo {titular_contrato.valor!r} "
-        f"{titular_contrato.cita()}. Garantia posiblemente no ejecutable. "
-        f"(similitud {sim:.2f})",
+        f"Deed under the name of {titular_escritura.valor!r} "
+        f"{titular_escritura.cita()}; loan holder {titular_contrato.valor!r} "
+        f"{titular_contrato.cita()}. Collateral possibly not enforceable. "
+        f"(similarity {sim:.2f})",
         (str(titular_contrato.doc), str(titular_escritura.doc)),
     )
 
@@ -81,7 +81,7 @@ def matricula_distinta(mat_contrato: Campo, mat_escritura: Campo) -> Hallazgo:
     """La escritura describe otro inmueble que el que garantiza el prestamo."""
     if not _comparables(mat_contrato, mat_escritura):
         return Hallazgo("matricula_distinta", GRAVE, DESCARTADA,
-                        "falta la matricula de alguno de los dos documentos")
+                        "one of the two documents is missing the registry number")
 
     difieren = norm(str(mat_contrato.valor)) != norm(str(mat_escritura.valor))
     # OCR de un lado -> la diferencia puede ser un digito mal leido: dudoso.
@@ -89,8 +89,8 @@ def matricula_distinta(mat_contrato: Campo, mat_escritura: Campo) -> Hallazgo:
         "matricula_distinta", GRAVE,
         _estado(mat_contrato, mat_escritura, difieren,
                 dudoso=_de_ocr(mat_contrato, mat_escritura)),
-        f"Matricula en escritura {mat_escritura.valor!r} {mat_escritura.cita()} "
-        f"vs contrato {mat_contrato.valor!r} {mat_contrato.cita()}.",
+        f"Registry number in deed {mat_escritura.valor!r} {mat_escritura.cita()} "
+        f"vs contract {mat_contrato.valor!r} {mat_contrato.cita()}.",
         (str(mat_contrato.doc), str(mat_escritura.doc)),
     )
 
@@ -99,15 +99,15 @@ def cuotas_no_coinciden(cuotas: Campo, pagos: Campo) -> Hallazgo:
     """El contrato pacta N cuotas pero existen M recibos."""
     if not _comparables(cuotas, pagos):
         return Hallazgo("cuotas_no_coinciden", MEDIA, DESCARTADA,
-                        "faltan las cuotas del contrato o los recibos")
+                        "the contract installments or the receipts are missing")
 
     emitidos = pagos.valor if isinstance(pagos.valor, int) else len(pagos.valor)
     difieren = not mismo_numero(cuotas.valor, emitidos)
     return Hallazgo(
         "cuotas_no_coinciden", MEDIA,
         _estado(cuotas, pagos, difieren),
-        f"El contrato estipula {cuotas.valor} cuotas {cuotas.cita()} "
-        f"pero existen {emitidos} recibos emitidos {pagos.cita()}.",
+        f"The contract stipulates {cuotas.valor} installments {cuotas.cita()} "
+        f"but there are {emitidos} issued receipts {pagos.cita()}.",
         (str(cuotas.doc), str(pagos.doc)),
     )
 
@@ -115,22 +115,22 @@ def cuotas_no_coinciden(cuotas: Campo, pagos: Campo) -> Hallazgo:
 def tasacion_vencida(tasacion: Campo, hoy: date | None = None) -> Hallazgo:
     """Una tasacion vieja no respalda el valor actual de la garantia."""
     if tasacion.vacio:
-        return Hallazgo("tasacion_vencida", MEDIA, DESCARTADA, "no hay fecha de tasacion")
+        return Hallazgo("tasacion_vencida", MEDIA, DESCARTADA, "no appraisal date")
 
     hoy = hoy or date.today()
     try:
         anio = fechas.parse(str(tasacion.valor), dayfirst=True).year
     except (ValueError, OverflowError):
         return Hallazgo("tasacion_vencida", MEDIA, PROBABLE,
-                        f"no se pudo interpretar la fecha de tasacion "
+                        f"could not parse the appraisal date "
                         f"{tasacion.valor!r} {tasacion.cita()}")
 
     vencida = anio < hoy.year - ANIOS_TASACION_VALIDA
     return Hallazgo(
         "tasacion_vencida", MEDIA,
         DESCARTADA if not vencida else (CONFIRMADA if tasacion.confiable else PROBABLE),
-        f"Tasacion con fecha {tasacion.valor} {tasacion.cita()}: "
-        f"{hoy.year - anio} anios de antiguedad.",
+        f"Appraisal dated {tasacion.valor} {tasacion.cita()}: "
+        f"{hoy.year - anio} years old.",
         (str(tasacion.doc),),
     )
 
@@ -144,7 +144,7 @@ def domicilio_distinto(dom_contrato: Campo, dom_escritura: Campo) -> Hallazgo:
     """
     if not _comparables(dom_contrato, dom_escritura):
         return Hallazgo("domicilio_distinto", BAJA, DESCARTADA,
-                        "falta el domicilio del titular en alguno de los documentos")
+                        "one of the documents is missing the holder's address")
 
     from rapidfuzz import fuzz
     sim = fuzz.token_sort_ratio(norm(str(dom_contrato.valor)),
@@ -153,8 +153,8 @@ def domicilio_distinto(dom_contrato: Campo, dom_escritura: Campo) -> Hallazgo:
     return Hallazgo(
         "domicilio_distinto", BAJA,
         _estado(dom_contrato, dom_escritura, difieren),
-        f"Domicilio del titular: {dom_escritura.valor!r} {dom_escritura.cita()} "
-        f"vs {dom_contrato.valor!r} {dom_contrato.cita()}. (similitud {sim:.2f})",
+        f"Holder's address: {dom_escritura.valor!r} {dom_escritura.cita()} "
+        f"vs {dom_contrato.valor!r} {dom_contrato.cita()}. (similarity {sim:.2f})",
         (str(dom_contrato.doc), str(dom_escritura.doc)),
     )
 

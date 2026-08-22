@@ -83,8 +83,8 @@ class Campo:
         if self.vacio or self.confiable:
             return None
         if not self.grounding_ok:
-            return "el valor no aparece en el documento: posible alucinacion"
-        return f"confianza de OCR baja ({self.ocr_confianza:.2f})"
+            return "value not found in the document: possible hallucination"
+        return f"low OCR confidence ({self.ocr_confianza:.2f})"
 
     def cita(self) -> str:
         if self.doc is None:
