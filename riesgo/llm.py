@@ -35,6 +35,25 @@ from tetherto.qvac_sdk.models import QWEN3_1_7B_INST_Q4
 MODELO_POR_DEFECTO = QWEN3_1_7B_INST_Q4
 CTX_POR_DEFECTO = 4096
 
+# Delegated inference: en vez de cargar el modelo en esta maquina, se delega a
+# un peer que ya lo tiene cargado. La conexion es directa por clave publica
+# sobre la DHT de Hyperswarm, con cifrado end-to-end incluido.
+#
+# Contrato verificado contra el SDK (los alias van en camelCase en el wire):
+#
+#     delegate = {
+#         "providerPublicKey": str,      # requerido
+#         "timeout": float,
+#         "healthCheckTimeout": float,
+#         "fallbackToLocal": bool,
+#         "forceNewConnection": bool,
+#     }
+#
+# El cold start de la primera conexion es de 15 a 45 segundos (bootstrap de la
+# DHT). Las siguientes reusan el socket. Medir latencia en caliente, nunca en
+# la primera llamada.
+TIMEOUT_DELEGADO_MS = 60_000
+
 # Determinismo: temperatura en cero y semilla fija. Para extraccion no
 # queremos creatividad, queremos que dos corridas den el mismo numero.
 PARAMS_DETERMINISTAS: dict[str, Any] = {"temp": 0.0, "top_p": 1.0, "seed": 7}
@@ -88,10 +107,20 @@ class Motor:
 
     def __init__(self, modelo: Any = MODELO_POR_DEFECTO,
                  ctx_size: int = CTX_POR_DEFECTO,
-                 verboso: bool = True) -> None:
+                 verboso: bool = True,
+                 provider: str | None = None,
+                 fallback_local: bool = True) -> None:
+        """``provider`` es la clave publica del peer que corre la inferencia.
+
+        Con ``fallback_local`` el SDK carga el modelo en esta maquina si el
+        provider no responde, asi que matar el provider en vivo no rompe la
+        demo: el siguiente caso corre local sin intervencion.
+        """
         self.modelo = modelo
         self.ctx_size = ctx_size
         self.verboso = verboso
+        self.provider = provider
+        self.fallback_local = fallback_local
         self._cliente: Client | None = None
         self._transport: Any = None
         self._model_id: str | None = None
@@ -101,11 +130,20 @@ class Motor:
         inicio = time.perf_counter()
         self._cliente = Client()
         self._transport = await self._cliente.connect()
+        delegate = None
+        if self.provider:
+            delegate = {
+                "providerPublicKey": self.provider,
+                "timeout": TIMEOUT_DELEGADO_MS,
+                "fallbackToLocal": self.fallback_local,
+            }
+
         self._model_id = await load_model(
             self._transport,
             model_src=self.modelo,
             model_config={"ctx_size": self.ctx_size},
             on_progress=self._progreso if self.verboso else None,
+            delegate=delegate,
         )
         self.segundos_de_carga = time.perf_counter() - inicio
         return self
@@ -120,6 +158,11 @@ class Motor:
         pct = getattr(ev, "progress", None) or getattr(ev, "percent", None)
         if pct is not None:
             print(f"\r  descargando modelo: {float(pct):5.1f}%", end="", flush=True)
+
+    @property
+    def delegado(self) -> bool:
+        """True si la inferencia corre en un peer y no en esta maquina."""
+        return self.provider is not None
 
     async def completar(self, messages: list[dict[str, str]],
                         system: str | None = None,

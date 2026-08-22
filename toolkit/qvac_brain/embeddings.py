@@ -12,7 +12,7 @@ import os
 
 from .cliente import pedir
 
-EMBEDDING_MODEL = os.getenv("QVAC_EMBED_MODEL", "GTE_LARGE_FP16")
+EMBEDDING_MODEL = os.getenv("QVAC_EMBED_MODEL", "EMBEDDINGGEMMA_300M_Q4_0")
 
 _dim_cache: int | None = None
 

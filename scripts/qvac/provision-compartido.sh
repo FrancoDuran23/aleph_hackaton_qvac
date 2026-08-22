@@ -68,10 +68,10 @@ if [ ! -f "$ARCHIVO_ENV" ]; then
 QVAC_BRIDGE_HOST=127.0.0.1
 QVAC_BRIDGE_PORT=8081
 QVAC_BRIDGE_TOKEN=${TOKEN}
-QVAC_LLM_MODEL=https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf
-QVAC_EMBED_MODEL=GTE_LARGE_FP16
+QVAC_LLM_MODEL=QWEN3_1_7B_INST_Q4
+QVAC_EMBED_MODEL=EMBEDDINGGEMMA_300M_Q4_0
 HOME=${DIR_APP}
-QVAC_CONFIG_PATH=${DIR_APP}/models
+QVAC_CACHE_DIR=${DIR_APP}/models
 ENVEOF
   chmod 600 "$ARCHIVO_ENV"
 else
@@ -101,8 +101,9 @@ MemoryMax=${TOPE_MB}M
 MemoryHigh=$(( TOPE_MB - 200 ))M
 # 1000 = "matame primero". Produccion queda con prioridad normal (0).
 OOMScoreAdjust=1000
-# Peso de CPU bajo: si compite con la app del hostel, pierde el bridge.
-CPUWeight=20
+# Peso de CPU normal: con 20 la inferencia caia a 0.48 tok/s (medido).
+# El freno real es MemoryMax + OOMScoreAdjust, no la CPU.
+CPUWeight=100
 IOWeight=20
 
 TimeoutStartSec=1800

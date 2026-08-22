@@ -15,8 +15,8 @@ import * as qvac from '@qvac/sdk'
 const HOST = process.env.QVAC_BRIDGE_HOST || '127.0.0.1'
 const PORT = Number(process.env.QVAC_BRIDGE_PORT || 8081)
 const TOKEN = process.env.QVAC_BRIDGE_TOKEN || ''
-const LLM_MODEL = process.env.QVAC_LLM_MODEL || 'https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf'
-const EMBED_MODEL = process.env.QVAC_EMBED_MODEL || 'GTE_LARGE_FP16'
+const LLM_MODEL = process.env.QVAC_LLM_MODEL || 'QWEN3_1_7B_INST_Q4'
+const EMBED_MODEL = process.env.QVAC_EMBED_MODEL || 'EMBEDDINGGEMMA_300M_Q4_0'
 const MAX_BODY_BYTES = 8 * 1024 * 1024
 
 /** Los modelos se cachean por nombre de constante: cargar cuesta minutos. */
@@ -32,7 +32,7 @@ function esFuenteDirecta (nombre) {
  *
  * `loadModel` acepta tres formas de `modelSrc`, y las tres pasan por acá:
  *
- *   1. Una constante del SDK       -> 'GTE_LARGE_FP16'
+ *   1. Una constante del SDK       -> 'EMBEDDINGGEMMA_300M_Q4_0'
  *   2. Un GGUF por URL o ruta      -> 'https://huggingface.co/.../modelo.gguf'
  *   3. Una key de Hyperdrive       -> 'pear://<key>/modelo.gguf'
  *
@@ -163,6 +163,26 @@ function responder (res, codigo, cuerpo) {
   res.end(payload)
 }
 
+/**
+ * Saca el bloque de razonamiento del texto visible.
+ *
+ * `captureThinking: true` hace que el SDK mande el razonamiento por
+ * `thinkingText`, pero no todos los modelos lo emiten con el mismo formato y
+ * alcanza con que uno se desvíe para que un `<think>` en inglés termine en la
+ * respuesta al usuario. Esto es la red por si eso pasa; el caso normal ya
+ * viene limpio y esta función no toca nada.
+ *
+ * Un `<think>` sin cerrar significa que la generación se cortó por límite de
+ * tokens en medio del razonamiento: ahí no hay respuesta que rescatar, así que
+ * devolvemos vacío y el cliente cae a su fallback.
+ */
+function limpiarPensamiento (texto) {
+  return texto
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<think>[\s\S]*$/i, '')
+    .trim()
+}
+
 /** Arma el `history` de QVAC a partir de un system prompt + mensajes. */
 function armarHistory (body) {
   const mensajes = body.history || body.messages || []
@@ -219,6 +239,10 @@ const rutas = {
         modelId,
         history,
         stream: false,
+        // Los Qwen3 razonan antes de responder. Sin esto el bloque <think>...</think>
+        // se cuela en contentText y termina en la cara del usuario; con esto el SDK
+        // lo separa en thinkingText y contentText queda limpio.
+        captureThinking: true,
         ...(Object.keys(generationParams).length ? { generationParams } : {}),
         // Con `json_schema`, llama.cpp lo convierte a una gramatica GBNF: el
         // decoder no puede emitir nada que viole el schema. Es la diferencia
@@ -229,7 +253,8 @@ const rutas = {
     })
 
     responder(res, 200, {
-      texto: (final.contentText ?? '').trim(),
+      texto: limpiarPensamiento(final.contentText ?? ''),
+      pensamiento: final.thinkingText ?? null,
       stop_reason: final.stopReason ?? null,
       stats: final.stats ?? null
     })

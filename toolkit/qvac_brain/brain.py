@@ -21,7 +21,7 @@ from .cliente import QvacBridgeError, pedir, pedir_async
 
 RESPUESTA_FALLBACK = "Uy, tuve un problema técnico un segundo. ¿Me repetís lo que me dijiste?"
 
-MODELO_DEFAULT = os.getenv("QVAC_LLM_MODEL", "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf")
+MODELO_DEFAULT = os.getenv("QVAC_LLM_MODEL", "QWEN3_1_7B_INST_Q4")
 
 
 _modelos_avisados: set[str] = set()
@@ -69,7 +69,11 @@ def _leer_tokens(stats: dict | None) -> tuple[int, int]:
     if not stats:
         return 0, 0
     entrada = stats.get("promptTokens") or stats.get("inputTokens") or stats.get("nPromptTokens") or 0
-    salida = stats.get("completionTokens") or stats.get("outputTokens") or stats.get("nPredictedTokens") or 0
+    # 'generatedTokens' es el nombre que devuelve el SDK hoy (verificado contra
+    # una respuesta real); el resto son alias de otras versiones.
+    salida = (stats.get("generatedTokens") or stats.get("emittedTokens")
+              or stats.get("completionTokens") or stats.get("outputTokens")
+              or stats.get("nPredictedTokens") or 0)
     return int(entrada), int(salida)
 
 
