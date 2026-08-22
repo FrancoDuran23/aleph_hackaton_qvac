@@ -88,7 +88,7 @@ transporte todavía no lo expone. Si algún camino lo necesita, hay que agregarl
 
 ## Checklist
 
-- [ ] `python scripts/qvac/smoke_test.py` pasa
+- [ ] El endpoint de `QVAC_BRIDGE_URL` responde en `/health`
 - [ ] Corrí `./scripts/ingest.sh` si cambié el modelo de embeddings
 - [ ] Puse `EMBEDDING_DIM` en el `.env` con el valor que imprimió el smoke test
 - [ ] Probé una pregunta en `http://localhost:8000` y la respuesta tiene sentido

@@ -85,7 +85,7 @@ class MotorBridge:
             await self._http.aclose()
             raise RuntimeError(
                 f"no se pudo contactar el bridge en {self.url}: {e}\n"
-                f"  el tunel SSH suele ser la causa: ./scripts/qvac/tunnel.sh <IP>"
+                f"  revisa que QVAC_BRIDGE_URL apunte a un endpoint de inferencia vivo"
             ) from e
 
         self.modelo = salud.get("llm")

@@ -59,7 +59,7 @@ QVAC trae delegación de inferencia P2P out-of-the-box, vía la DHT de Hyperswar
 
 ### Cómo funciona
 
-**Servidor (Hetzner) — provider:**
+**Servidor — provider:**
 
 ```js
 import { startQVACProvider } from '@qvac/sdk';

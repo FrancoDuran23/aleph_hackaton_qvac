@@ -109,7 +109,7 @@ tiempo de armar el túnel.
   borra los datos indexados, hay que reingestar).
 - **`/chat` tarda mucho**: la inferencia corre en CPU. Una respuesta larga
   tarda decenas de segundos; es esperable. Si en cambio falla rápido, el
-  motor de inferencia no está accesible — revisá `scripts/qvac/README.md`.
+  motor de inferencia no está accesible en `QVAC_BRIDGE_URL`.
 - **El chat responde "no se encontró contexto relevante"**: todavía no
   corriste `./scripts/ingest.sh`, o los PDFs no tenían texto extraíble
   (escaneados sin OCR, por ejemplo).

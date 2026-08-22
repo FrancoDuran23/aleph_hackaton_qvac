@@ -1,4 +1,4 @@
-"""Inferencia local con QVAC, vía el bridge HTTP de `scripts/qvac/`.
+"""Inferencia local con QVAC, vía el endpoint HTTP de `QVAC_BRIDGE_URL`.
 
 Generación y embeddings locales sobre QVAC
 sin cambiar sus firmas. Ver README.md en esta carpeta.

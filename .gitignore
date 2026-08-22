@@ -50,3 +50,6 @@ demo/preguntas.json
 !demo/preguntas.example.json
 demo/cache_calentado.json
 toolkit/claude_brain/errors_log.md
+
+# Infra propia de inferencia: no es parte del proyecto
+scripts/qvac/
