@@ -76,6 +76,118 @@ No tocar nada más de la CLI hasta que el fix de la sección 1 esté validado y 
 
 ---
 
+## 3b. Hallazgo nuevo — grounding numérico no detecta montos truncados por OCR
+
+Encontrado corriendo dev (seed 1) como control del fix de la sección 1. **No es
+el bug de las SDD-3** — ese ya está resuelto y dev pasó de 14/14 a 19/20 con
+100% de cobertura. Es un modo de fallo distinto, en el mismo sistema de
+confianza, y **queda como límite documentado, sin aplicar todavía** (ver
+sección 4 — coordinación con el companero, que está corriendo dev/holdout con
+su fix en paralelo).
+
+### El caso
+
+`cliente_4498`, escritura escaneada. El OCR de QVAC leyó:
+
+```
+"...VALUACION FISCAL: ARS 457. FECHA DE TASACIO 18/07/2024..."
+```
+
+El valor real es `$457.000`. El OCR se comió `000` — probablemente el separador
+de miles confundió al modelo o el bloque se cortó. El extractor copió `"457"`
+fielmente: no alucinó nada, el modelo hizo su trabajo bien.
+
+**El grounding dio `True`.** `_grounding()` en `riesgo/extraccion.py:160` busca
+la secuencia de dígitos extraída como substring de los dígitos de la página:
+
+```python
+d = digitos(s)                       # "457"
+if d and len(d) >= 3:
+    for n, pag in enumerate(doc.paginas, 1):
+        if d in digitos(pag):        # "457" in "...457..." -> True
+            return n, True
+```
+
+`"457"` **es** exactamente los dígitos que hay en el texto — no es una
+alucinación del modelo, es el texto fuente que está mal. El grounding no puede
+distinguir "el valor completo está acá" de "un fragmento truncado del valor
+está acá", porque las dos cosas se ven idénticas desde la perspectiva de
+"¿aparecen estos dígitos en la página?".
+
+**Consecuencia en el ruteo:** `descubierto = 1.015.000 − 457 ≈ 1.014.543` en vez
+de `558.000`. Cruza el corte de $1M. Rutea a LEGALES en vez de COBRANZAS.
+Sale **FIRME**, porque `ocr_confianza = 0.806` — arriba de `UMBRAL_OCR` (0.75).
+El OCR estaba "seguro" de un texto que estaba truncado; la confianza por bloque
+no mide si el número está completo, mide si el bloque se leyó con nitidez.
+
+### Por qué no es el mismo bug que ya arreglamos
+
+Sección 1 es sobre **comparación de texto** (nombres, matrículas) cuando un
+lado viene con ruido de OCR — la clasificación PROBABLE/CONFIRMADA ya cubre
+eso. Esto es sobre **grounding numérico** validando presencia de dígitos sin
+validar que el número esté completo. Ningún umbral de similitud de texto
+resuelve esto: el string `"457"` no se compara contra nada, se busca tal cual.
+
+### El fix diseñado — no aplicado
+
+Mismo principio que la sección 1: **no inventar el número correcto** (sumar
+ceros a ojo es alucinar exactamente lo que la regla #2 del SDD prohíbe).
+**Declarar duda cuando la fuente parece truncada**, en vez de forzar certeza.
+
+La señal: un monto en este dataset nunca termina en un separador decimal sin
+dígitos después. `"457."` seguido de una palabra o el final de la línea es la
+firma de un número cortado — un monto real termina en `.000`, `,00`, o sigue
+con más dígitos.
+
+```python
+# en riesgo/extraccion.py, junto a _grounding()
+
+_CORTE_SOSPECHOSO = re.compile(r"\d[.,]\s*(?:[A-ZÁÉÍÓÚÑ]|$)")
+
+def _posible_truncado(d: str, pag: str) -> bool:
+    """True si el punto donde aparece `d` en la página termina en un
+    separador decimal sin dígitos detrás -- la firma de un monto que el OCR
+    cortó a mitad de camino.
+    """
+    i = digitos(pag).find(d)
+    if i == -1:
+        return False
+    # ubicar el fragmento de texto real (no solo dígitos) alrededor del match
+    # y chequear si termina en "." o "," sin numero despues
+    ...  # implementación exacta pendiente: mapear posición en digitos(pag)
+         # de vuelta a la posición en pag es lo único no trivial acá
+```
+
+Y en `_grounding`, cuando el campo es un monto (`normalizar_monto` en
+`CONVERSORES`) y `_posible_truncado` da `True`: devolver `grounding_ok=True`
+pero marcar el `Campo` con una reserva nueva (no `ocr_confianza`, que ya
+significa otra cosa) — algo como `posible_truncado=True` en `modelo.Campo`,
+que `Campo.confiable` trate igual que `grounding_ok=False`: degrada el caso,
+no fuerza ruteo con ese número.
+
+**Alcance:** solo aplica a campos que pasan por `normalizar_monto`
+(`capital_original`, `capital_adeudado`, `garantia_valor`). `cuotas_contrato`
+es un entero chico y truncarlo no tiene el mismo patrón de daño.
+
+### Por qué no se aplica ahora
+
+1. Estoy en medio del checklist de entrega y la CLI, que son la entrega
+   garantizada.
+2. El companero está corriendo dev y holdout con su fix (sección 1) en
+   paralelo. Meter un cambio en el grounding ahora mezclaría dos fixes en la
+   misma medición — si el número se mueve, no se sabría cuál de los dos lo
+   causó.
+
+**Si sobra tiempo después de la CLI y el checklist:** aplicar, correr los 20 de
+dev, y si mejora sin romper nada, entra. Si no llega, queda declarado como
+límite conocido — que es una entrega válida igual, y es literalmente lo que el
+track premia.
+
+**Antes de correr con el fix aplicado: avisar al companero.** No se mide con
+código distinto al mismo tiempo.
+
+---
+
 ## 4. Orden
 
 ```
