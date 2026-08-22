@@ -503,6 +503,121 @@ _(pendiente de completar con el resultado)_
 
 ---
 
+## H. El hallazgo: el grounding verifica existencia, no corrección
+
+La corrida real destapó `cliente_4407` ruteado mal **con confianza FIRME** —
+un error que el sistema no declaró, que es justo lo que la sección 5b del SDD
+promete que no pasa.
+
+### H1 · La hipótesis: confusión de campo
+
+Un grounding que solo busca el valor en el texto cubre un modo de fallo y no
+el otro:
+
+| Modo de fallo | Qué pasa | ¿Lo atrapa el grounding? |
+|---|---|---|
+| **Alucinación** | valor que no existe en el documento | **sí** |
+| **Confusión de campo** | valor real, campo equivocado | **no** |
+
+Si el modelo extrae `capital_original` cuando le pedimos `capital_adeudado`,
+ese número **está** en el documento. Pasa el grounding con nota perfecta, y el
+caso sale FIRME con un dato equivocado.
+
+### H2 · Se probó, y no era eso
+
+```bash
+python -c "... extraer_documento(...) sobre 5 casos ..."
+```
+
+| Caso | Extraído | Adeudado (correcto) | Original (el otro) | |
+|---|---|---|---|---|
+| `cliente_4400` | 1 494 000 | 1 494 000 | 2 400 000 | ok |
+| `cliente_4407` | 829 000 | 829 000 | 1 500 000 | ok |
+| `cliente_4414` | 796 000 | 796 000 | 1 500 000 | ok |
+| `cliente_4428` | 1 490 000 | 1 490 000 | 2 400 000 | ok |
+| `cliente_4442` | 2 238 000 | 2 238 000 | 4 000 000 | ok |
+
+**0/5 confusiones.** Los dos montos están en el mismo documento, a pocas líneas
+uno del otro, y el modelo los distingue. Lo que lo sostiene es la pista
+explícita del prompt:
+
+```python
+"capital_adeudado": "el saldo que se debe HOY, no el capital original"
+```
+
+### H3 · La causa real: un heurístico de presencia
+
+El bug estaba en `aviso_previo`, y era peor: **ni siquiera pasaba por el
+grounding.** Era un heurístico que dice "si existe `correspondencia.txt`,
+hubo aviso previo".
+
+El archivo **existe siempre**. Lo que cambia es quién escribió:
+
+```
+aviso_previo = True    De: juan.perez@mail.com    -> el deudor avisa
+                       "Les escribo para informar que voy a demorarme"
+
+aviso_previo = False   De: cobranzas@banco...     -> el banco intima
+                       "Intimamos a regularizar bajo apercibimiento"
+```
+
+Las dos son correspondencia. Solo la primera es un aviso previo.
+
+| | |
+|---|---|
+| Casos con `aviso_previo` incorrecto | 10 / 20 |
+| **De esos, casos que cambian de ruta** | **7 / 20** |
+
+**El sesgo es direccional, y ahí está lo grave.** Los 7 van a REFINANCIACION,
+porque la regla es `cobertura >= 0.6 and aviso_previo` y la cobertura ya daba:
+
+| Debía ir a | Fue a | Casos |
+|---|---|---|
+| LEGALES | REFINANCIACION | **4** |
+| COBRANZAS | REFINANCIACION | 3 |
+
+No es ruido simétrico: **el bug empuja siempre hacia el resultado más
+benévolo.** Un banco con esto refinancia cuatro carpetas cuya garantía tiene
+un defecto formal. El costo no se mide en puntos de accuracy.
+
+### H4 · Por qué estaba invisible
+
+Los modos `oracle` y `sin-ocr` toman `aviso_previo` del ground truth. **El bug
+solo existe cuando el dato sale de los documentos**, así que ninguna métrica
+anterior lo podía ver.
+
+Es el argumento para correr la extracción real aunque cueste 12 minutos: los
+modos baratos miden la lógica, no el sistema.
+
+### H5 · El fix, y por qué generaliza
+
+La mitigación correcta para el modo "valor real, campo errado" es **mirar el
+contexto alrededor del valor, no solo su presencia**. Acá eso se traduce en
+mirar la dirección del mensaje:
+
+```python
+remitente = norm(re.search(r"^De\s*:\s*(.+)$", texto, re.M).group(1))
+partes = [p for p in norm(titular).split() if len(p) > 2]
+return bool(partes) and all(p in remitente for p in partes)
+```
+
+El criterio es *¿salió del deudor?*, no *¿la dirección dice cobranzas?*, así
+que no depende de las direcciones concretas de este dataset.
+
+**20/20** después del fix, con y sin nombre del titular.
+
+### H6 · Lo que queda abierto
+
+La confusión de campo **no ocurre hoy**, pero el grounding sigue sin poder
+verla. Si al cambiar de modelo apareciera, la mitigación ya está diseñada:
+verificar que el match esté precedido del texto que corresponde
+(`"el capital adeudado asciende a"` vs `"otorga un prestamo por la suma de"`).
+
+No se implementó porque hoy no hay nada que arreglar, y código sin un fallo
+que lo justifique es código sin probar.
+
+---
+
 ## G. Pendientes de verificar
 
 | Qué | Por qué importa |

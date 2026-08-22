@@ -48,6 +48,44 @@ qué falló.
 Eso permite reportar la métrica que importa: **precisión sobre los casos
 FIRMES**. Ver [`METRICAS.md`](METRICAS.md).
 
+## Un hallazgo que vale más que el score
+
+El grounding —buscar el valor extraído dentro del documento— es la señal de
+confianza principal del sistema. Cubre un modo de fallo y **no** el otro:
+
+| Modo de fallo | Ejemplo | ¿Lo atrapa? |
+|---|---|---|
+| Alucinación | el modelo inventa un monto | **sí** |
+| Confusión de campo | extrae el capital original en vez del adeudado | **no** |
+
+En el segundo caso el número **está** en el documento: pasa el grounding con
+nota perfecta y el caso sale FIRME con un dato equivocado. Se midió sobre 5
+casos y hoy no ocurre —la pista explícita en el prompt alcanza para separar los
+dos montos— pero el sistema no podría detectarlo si ocurriera.
+
+**El error que sí apareció fue una variante peor**: un dato que ni siquiera
+pasaba por el grounding. `aviso_previo` se resolvía por presencia de archivo, y
+el archivo existe siempre — lo que cambia es si lo escribió el deudor o el
+banco.
+
+**7 de 20 casos ruteados mal, y los 7 empujados a REFINANCIACION:**
+
+| Debía ir a | Fue a | Casos |
+|---|---|---|
+| LEGALES | REFINANCIACION | **4** |
+| COBRANZAS | REFINANCIACION | 3 |
+
+No fallaba al azar: **empujaba sistemáticamente hacia el resultado más
+benévolo.** Un banco con este bug refinancia carpetas que debía mandar a
+cobranzas, y cuatro que debía mandar a legales — casos con la garantía
+formalmente defectuosa. El error no es una métrica que baja, es plata.
+
+Estaba invisible porque los modos de evaluación baratos toman ese campo del
+ground truth. **Solo aparece extrayendo de los documentos reales**, que es el
+argumento para pagar los 12 minutos de la corrida completa.
+
+Detalle en [`pruebas/BITACORA.md`](pruebas/BITACORA.md), sección H.
+
 ## Estructura
 
 ```

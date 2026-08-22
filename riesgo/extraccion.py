@@ -23,7 +23,7 @@ from __future__ import annotations
 import json
 import re
 
-from .comparacion import digitos
+from .comparacion import digitos, norm as norm_texto
 from .documentos import Documento
 from .modelo import Campo
 from .normalizacion import (normalizar_entero, normalizar_fecha,
@@ -104,14 +104,45 @@ def parsear_recibos(doc: Documento) -> tuple[int | None, float | None]:
     return len(filas), round(a_tiempo / len(filas), 3)
 
 
-def parsear_correspondencia(doc: Documento | None) -> bool:
-    """Hubo aviso previo si el deudor escribió antes de la mora.
+_REMITENTE = re.compile(r"^\s*De\s*:\s*(.+)$", re.IGNORECASE | re.MULTILINE)
 
-    Es presencia, no contenido: el dataset genera la carta solo cuando el aviso
-    existió. Preguntarle esto al modelo sería pagar una llamada por un booleano
-    que ya está en el sistema de archivos.
+
+def parsear_correspondencia(doc: Documento | None,
+                            titular: str | None = None) -> bool | None:
+    """Hubo aviso previo si **el deudor** escribió al banco antes de la mora.
+
+    ⚠️ La presencia del archivo NO alcanza, y creer que sí alcanza costó 10 de
+    20 casos mal. La carta existe siempre; lo que cambia es quién la escribió:
+
+        aviso previo    De: juan.perez@mail.com      -> el deudor avisa
+        sin aviso       De: cobranzas@banco...       -> el banco intima
+
+    Las dos son "correspondencia". Solo la primera es un aviso previo, y la
+    diferencia entre una y otra manda el caso a REFINANCIACION o no.
+
+    Se decide por el remitente comparado contra el nombre del titular, que es
+    el criterio de fondo (¿salió del deudor?) y no depende de la dirección de
+    mail concreta que use este dataset.
+
+    Devuelve None si no se puede determinar: es un dato faltante, no un no.
     """
-    return doc is not None and not doc.ilegible
+    if doc is None or doc.ilegible:
+        return None
+
+    m = _REMITENTE.search(doc.texto)
+    if not m:
+        return None
+
+    remitente = norm_texto(m.group(1))
+    if titular:
+        # El deudor escribe desde una dirección armada con su nombre.
+        partes = [p for p in norm_texto(titular).split() if len(p) > 2]
+        if partes and all(p in remitente for p in partes):
+            return True
+        return False
+
+    # Sin nombre del titular: el remitente institucional delata al banco.
+    return not any(p in remitente for p in ("cobranzas", "legales", "banco", "noreply"))
 
 
 # --- extracción con modelo ---------------------------------------------------
@@ -226,8 +257,11 @@ async def extraer_carpeta(motor, docs: dict[str, Documento]) -> dict[str, Campo]
         campos["puntualidad"] = Campo(puntualidad, doc=recibos.nombre, pagina=1)
 
     correo = docs.get("correspondencia.txt")
-    campos["aviso_previo"] = Campo(parsear_correspondencia(correo),
-                                   doc=correo.nombre if correo else None)
+    titular = campos["titular_contrato"].valor
+    campos["aviso_previo"] = Campo(
+        parsear_correspondencia(correo, titular),
+        doc=correo.nombre if correo else None,
+        pagina=1 if correo else None)
     return campos
 
 
