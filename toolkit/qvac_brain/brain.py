@@ -23,6 +23,19 @@ RESPUESTA_FALLBACK = "Uy, tuve un problema técnico un segundo. ¿Me repetís lo
 
 MODELO_DEFAULT = os.getenv("QVAC_LLM_MODEL", "QWEN3_1_7B_INST_Q4")
 
+# Parametros de generacion por defecto.
+#
+# Sin esto el bridge no recibe ningun `generationParams` y el modelo corre con
+# sampling por defecto: la misma pregunta devuelve respuestas distintas y nada
+# lo delata. Es el mismo error que tenia el bridge del lado servidor, pero del
+# lado cliente.
+#
+# `reasoning_budget: 0` apaga el bloque <think> de Qwen3. Medido contra el
+# bridge: la misma respuesta cuesta 58 tokens con razonamiento y 9 sin el. Con
+# `max_tokens` bajo el efecto es peor que lento -- el modelo agota el
+# presupuesto pensando y devuelve texto vacio con stop_reason "length".
+PARAMS_DEFAULT: dict[str, object] = {"temp": 0.0, "top_p": 1.0, "reasoning_budget": 0}
+
 
 _modelos_avisados: set[str] = set()
 
@@ -44,7 +57,8 @@ def _resolver_modelo(modelo: str) -> str:
 
 
 def _armar_payload(messages: list[dict], system: str, modelo: str,
-                   max_tokens: int, prefill: str | None) -> dict:
+                   max_tokens: int, prefill: str | None,
+                   generation_params: dict | None = None) -> dict:
     """Arma el body para POST /v1/completion."""
     msgs = list(messages)
     if prefill:
@@ -53,7 +67,12 @@ def _armar_payload(messages: list[dict], system: str, modelo: str,
         # parecido pero no idéntico — verificá la salida si dependés del prefill.
         msgs.append({"role": "assistant", "content": prefill})
 
-    payload = {"messages": msgs, "model": _resolver_modelo(modelo), "max_tokens": max_tokens}
+    payload = {
+        "messages": msgs,
+        "model": _resolver_modelo(modelo),
+        "max_tokens": max_tokens,
+        "generation_params": {**PARAMS_DEFAULT, **(generation_params or {})},
+    }
     if system:
         payload["system"] = system
     return payload
