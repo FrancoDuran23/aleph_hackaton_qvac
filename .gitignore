@@ -1,0 +1,33 @@
+# Secrets — never commit
+.secrets/
+*.secrets.md
+hetzner-acceso.md
+*.pem
+*.key
+id_rsa*
+id_hetzner*
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+npm-debug.log*
+
+# QVAC model artifacts (large binaries)
+models/
+*.gguf
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local tooling
+.atl/
+
+# Orca / Gentle AI local tooling state
+.atl/
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
