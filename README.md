@@ -132,22 +132,51 @@ lo ajustamos al set con el que lo medimos.
 
 ```
 riesgo/
-  modelo.py          Campo, Hallazgo, Advertencia, Veredicto
+  modelo.py          Campo, Hallazgo, Advertencia, Alerta, Veredicto
   comparacion.py     nombres por fuzzy, números por dígitos exactos
   contradicciones.py los cinco chequeos entre documentos
   calculo.py         descubierto, cobertura, puntualidad
   ruteo.py           a qué área va el caso y por qué
   motor.py           orquesta un caso: analizar() -> Veredicto
 
+  documentos.py      leer_documento() -> texto por página + OCR si hace falta
+  ocr.py             OCR de QVAC para escrituras escaneadas
+  extraccion.py      documentos -> campos, un prompt por documento
+  normalizacion.py   montos y fechas: del string crudo al valor
+  redaccion.py       la nota interna, sobre hechos ya validados
+
   llm.py             cliente QVAC vía SDK (local o delegado por DHT)
   bridge.py          cliente QVAC vía HTTP
   provider.py        lado servidor de delegated inference
 
+  cli.py             la CLI: `riesgo analizar` / `riesgo cartera`
+  resumen.py         el bloque de cierre sobre una cartera completa
   hito1.py           verificación de punta a punta contra el modelo
   medir.py           determinismo y latencia
   evaluar.py         métricas contra el ground truth
   calibrar.py        barrido de umbrales
 ```
+
+## Usar la CLI
+
+No hay un comando `riesgo` instalado — se invoca como módulo:
+
+```bash
+.venv/Scripts/python -m riesgo.cli analizar --cliente 4400
+.venv/Scripts/python -m riesgo.cli analizar --cliente 4400 --json
+.venv/Scripts/python -m riesgo.cli cartera
+```
+
+`--cliente` acepta el número o el nombre completo de la carpeta
+(`cliente_4400`). Los IDs válidos son los que trae `dataset/` después de
+extraer `dataset_riesgo.tar.gz` — no hay un cliente `4471` en el dataset
+real, ese número solo aparece como ejemplo ilustrativo más arriba en este
+documento.
+
+Necesita un endpoint de inferencia QVAC accesible en `QVAC_BRIDGE_URL` (ver
+`.env`). Si no tenés uno propio levantado, pedile el `QVAC_BRIDGE_TOKEN` y la
+URL a quien esté corriendo el server — `.env.example` los deja vacíos a
+propósito, y sin ellos la CLI no tiene contra qué inferir.
 
 ## Arrancar
 
@@ -165,6 +194,33 @@ Verificar que la inferencia funciona antes de cualquier otra cosa:
 ```bash
 .venv/Scripts/python -m riesgo.hito1 --bridge
 ```
+
+### Si el caso tiene una escritura escaneada: hace falta un worker Node local
+
+El OCR (`riesgo/ocr.py`) **no pasa por `QVAC_BRIDGE_URL`** — corre contra un
+worker de QVAC instalado en esta máquina, aparte del bridge de inferencia de
+texto. Sin él, cualquier cliente con `escritura_escaneada: true` en el ground
+truth falla con `WorkerNotFoundError`.
+
+```bash
+python -m tetherto.qvac_sdk install-worker
+```
+
+Necesita Node ≥22.17 instalado y en el PATH.
+
+⚠️ **En Windows el auto-install del SDK está roto**: busca el ejecutable
+`npm`, pero en Windows es `npm.cmd`, así que falla con *"npm was not found"*
+aunque npm esté instalado y funcionando. Instalación manual, en la ruta que
+el SDK espera (`python -c "from tetherto.qvac_sdk.client import
+managed_worker_prefix; print(managed_worker_prefix())"` para encontrarla):
+
+```bash
+cd ~/.cache/qvac/worker/0.17.1   # o la ruta que haya impreso el comando de arriba
+npm install @qvac/sdk@0.17.1
+```
+
+Los clientes sin escrituras escaneadas no necesitan nada de esto —
+`documentos.py` solo llama a `ocr.py` cuando `pypdf` no extrae texto.
 
 Corre cuatro pasos en orden, y cada uno valida el anterior: el modelo responde,
 `temp=0` llega de verdad al motor, `response_format` restringe el decoder, y la
