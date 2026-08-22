@@ -65,8 +65,31 @@ El holdout —el test de generalización que nadie vio— sube de 65% a **90%**,
 
 ### Casos que quedan a revisión / error
 
-- Dev, único FIRME-erróneo: `cliente_4498` — no es OCR, es el **corte de política**
-  ($1.014.543 vs corte $1.000.000).
+- **`cliente_4498` — FIRME-erróneo (confident-wrong)**
+
+  Causa raíz: truncamiento de OCR en `escritura.pdf`.
+  Crudo OCR: `"ARS 457."` → `garantia_valor = 457` (real: `457.000`).
+
+  Efecto: `descubierto = 1.014.543` en vez de un caso que cierra a favor del
+  banco. Ruteo a LEGALES en vez de COBRANZAS. Salió **FIRME** porque la
+  confianza de OCR era 0.806 (alta).
+
+  **NO es un caso límite de corte de política.** La coincidencia con el corte
+  de $1M es consecuencia del bug, no una decisión de diseño rozando el umbral:
+  `1.015.000 − 457 = 1.014.543`.
+
+  Ninguna etapa lo atrapó:
+    - el grounding valida fidelidad al texto, y el texto ya venía roto
+    - la confianza de OCR es por página, no por bloque (ver Límite 2 más abajo)
+    - la confianza solo se consultaba en `evaluar_contradiccion()`, no en el
+      grounding numérico
+
+  Fix diseñado, no aplicado: `garantia_valor` de este dataset es siempre
+  múltiplo de 1000 por construcción (`gen_dataset.py:281`,
+  `round(capital_adeudado * cobertura, -3)`). Un valor que no lo es delata el
+  truncamiento — chequeo determinista, sin heurísticas sobre el string OCR.
+  Ver `SDD-3-mi-parte.md` sección 3b.
+
 - Holdout, 2 mal ruteados (`cliente_4470`, `cliente_4533`): contradicción real en
   escritura escaneada → PROBABLE → CON RESERVAS. No se fuerza a LEGALES, se flaguea.
 
