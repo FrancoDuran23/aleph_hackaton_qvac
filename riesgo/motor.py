@@ -11,7 +11,7 @@ from datetime import date
 
 from .calculo import derivar
 from .contradicciones import detectar
-from .modelo import CONFIRMADA, GRAVE, PROBABLE, Advertencia, Campo, Veredicto
+from .modelo import CONFIRMADA, GRAVE, PROBABLE, Advertencia, Alerta, Campo, Veredicto
 from .ruteo import CORTE_DESCUBIERTO, rutear
 
 
@@ -57,6 +57,21 @@ def _advertencias(campos: dict[str, Campo], influyen: tuple[str, ...],
     return avisos
 
 
+def _alertas(campos: dict[str, Campo]) -> list[Alerta]:
+    """Los campos marcados por la validacion numerica (el companero, punto 2).
+
+    Esta funcion solo empaqueta lo que ya esta en el Campo -- el detector que
+    decide si un valor esta incompleto vive en la extraccion, no aca. Un campo
+    sin `alerta_lectura` no genera nada.
+    """
+    return [
+        Alerta(campo=nombre, crudo_ocr=c.crudo or "", motivo=c.alerta_lectura,
+              documento=c.doc, pagina=c.pagina, confianza_ocr=c.ocr_confianza)
+        for nombre, c in sorted(campos.items())
+        if c.alerta_lectura is not None
+    ]
+
+
 def analizar(cliente_id: int, campos: dict[str, Campo], *,
              nombre: str | None = None,
              docs_ilegibles: set[str] | None = None,
@@ -89,4 +104,5 @@ def analizar(cliente_id: int, campos: dict[str, Campo], *,
         derivados=derivados,
         hallazgos=hallazgos,
         advertencias=_advertencias(campos, influyen, hallazgos, docs_ilegibles),
+        alertas=_alertas(campos),
     )

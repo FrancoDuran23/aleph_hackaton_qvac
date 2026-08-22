@@ -28,7 +28,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from .modelo import BAJA, CONFIRMADA, FIRME, GRAVE, MEDIA, Campo, Veredicto
+from .modelo import BAJA, CONFIRMADA, FIRME, GRAVE, MEDIA, PROBABLE, Campo, Veredicto
 
 ANCHO = 80
 
@@ -38,6 +38,12 @@ COLOR_RUTA = {"LEGALES": "bold red", "REFINANCIACION": "bold yellow",
               "COBRANZAS": "bold green"}
 COLOR_GRAVEDAD = {GRAVE: "bold red", MEDIA: "yellow", BAJA: "dim"}
 
+# Ancho de columna de citas. Fijo a proposito: una cita larga
+# ("[correspondencia.txt p.1]", 26 chars) rompia la grilla de HISTORIAL
+# (columna de 20) empujando todo lo que venia despues. Se trunca, no se
+# ensancha -- la grilla no se negocia por un nombre de archivo largo.
+ANCHO_CITA = 20
+
 
 def _pesos(v: float | None) -> str:
     return "—" if v is None else f"${v:,.0f}".replace(",", ".")
@@ -45,6 +51,8 @@ def _pesos(v: float | None) -> str:
 
 def _marca(c: Campo) -> Text:
     """La confianza del campo, en una palabra."""
+    if c.alerta_lectura is not None:
+        return Text("⛔ alerta", style="bold red")
     if c.vacio:
         return Text("sin dato", style="dim")
     if not c.grounding_ok:
@@ -54,14 +62,17 @@ def _marca(c: Campo) -> Text:
     return Text("✓ verificado", style="green")
 
 
-def _cita(campo: Campo) -> Text:
-    """La cita como Text, no como str.
+def _cita(campo: Campo, ancho: int = ANCHO_CITA) -> Text:
+    """La cita como Text, no como str, truncada al ancho de la columna.
 
     Rich interpreta los corchetes como markup: pasar "[contrato.pdf p.1]" en
     crudo hace que lo lea como una etiqueta de estilo y lo borre de la
     pantalla. Justo la información que no puede faltar.
     """
-    return Text(campo.cita() or "—", style="dim")
+    s = campo.cita() or "—"
+    if len(s) > ancho:
+        s = s[:ancho - 1] + "…"
+    return Text(s, style="dim")
 
 
 def _fila_monto(t: Table, etiqueta: str, campo: Campo) -> None:
@@ -117,9 +128,29 @@ def imprimir(con: Console, v: Veredicto, campos: dict[str, Campo],
         etiqueta = f"⚠ CONTRADICCION — {hall.gravedad.upper()}"
         if hall.estado != CONFIRMADA:
             etiqueta += f"  ({hall.estado.lower()})"
-        con.print(Text(etiqueta, style=COLOR_GRAVEDAD.get(hall.gravedad, "")))
+        # PROBABLE se lee como duda, no como hallazgo: mismo amarillo que
+        # CON RESERVAS, sin importar la gravedad. Es lo que causa lo otro.
+        color = "yellow" if hall.estado == PROBABLE else COLOR_GRAVEDAD.get(hall.gravedad, "")
+        con.print(Text(etiqueta, style=color))
         for linea in _envolver(hall.detalle, ANCHO - 4):
             con.print(Text(f"  {linea}"))
+        con.print()
+
+    # --- alertas de lectura ------------------------------------------------
+    # El campo se muestra vacio, no en cero -- coherente con la seccion 6 del
+    # SDD original, no se asume un valor por defecto. El crudo del OCR va en
+    # pantalla porque es lo que convierte la alerta en accionable: el analista
+    # abre el documento, va a la pagina citada, y verifica en cinco segundos.
+    for al in v.alertas:
+        con.print(Text("⛔ ALERTA DE LECTURA", style="bold red"))
+        cita = f"[{al.documento}{f' p.{al.pagina}' if al.pagina else ''}]" if al.documento else ""
+        con.print(Text(f"  {al.campo:<18} OCR leyo: {al.crudo_ocr!r}"),
+                  Text(f"  {cita}", style="dim"))
+        for linea in _envolver(al.motivo, ANCHO - 24):
+            con.print(Text(f"  {'':<20}{linea}", style="dim"))
+        if al.confianza_ocr is not None:
+            con.print(Text(f"  {'':<20}confianza de pagina: {al.confianza_ocr:.0%}", style="dim"))
+        con.print(Text("  → Dato no utilizable. Verificar contra el documento.", style="yellow"))
         con.print()
 
     # --- nota ------------------------------------------------------------
@@ -188,6 +219,7 @@ def a_json(v: Veredicto, campos: dict[str, Campo], nota: str | None) -> dict:
         "campos": {k: campo(c) for k, c in sorted(campos.items())},
         "hallazgos": [asdict(h) for h in v.hallazgos],
         "advertencias": [asdict(a) for a in v.advertencias],
+        "alertas": [asdict(a) for a in v.alertas],
         "nota_interna": nota,
     }
 
