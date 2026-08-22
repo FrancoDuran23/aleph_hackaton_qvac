@@ -72,9 +72,16 @@ def _separadores(s: str) -> str:
 
     if tiene_coma:
         # "2,400" es ambiguo; "2,40" y "2,4" son decimales. Tres dígitos
-        # después de la coma se lee como agrupación de miles.
+        # después de la coma se lee como agrupación de miles. Una coma con 0 o
+        # más de 3 dígitos ("2,63000000") no es ningún formato válido: es un
+        # monto mal formado y devolver 2.63 sería un confident-wrong. Se deja
+        # sin interpretar (queda None) para que el caso vaya a revisión.
         cola = s.rsplit(",", 1)[1]
-        return s.replace(",", "") if len(cola) == 3 else s.replace(",", ".")
+        if len(cola) == 3:
+            return s.replace(",", "")
+        if len(cola) in (1, 2):
+            return s.replace(",", ".")
+        return ""
 
     if tiene_punto:
         cola = s.rsplit(".", 1)[1]
