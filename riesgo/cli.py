@@ -49,9 +49,22 @@ def _pesos(v: float | None) -> str:
     return "—" if v is None else f"${v:,.0f}".replace(",", ".")
 
 
-def _marca(c: Campo) -> Text:
+def _campos_alertados(v: Veredicto) -> set[str]:
+    """Nombres de campo cubiertos por alguna alerta -- incluidas las de
+    Alerta.campo compuestas tipo "garantia_valor/capital_adeudado" (Detector B,
+    cruza dos campos y no vive en ningun Campo individual). Sin esto, el campo
+    involucrado se sigue mostrando "✓ verificado" al lado de la alerta que
+    dice lo contrario dos renglones mas abajo.
+    """
+    cubiertos: set[str] = set()
+    for al in v.alertas:
+        cubiertos.update(al.campo.split("/"))
+    return cubiertos
+
+
+def _marca(c: Campo, nombre: str | None = None, alertados: set[str] = frozenset()) -> Text:
     """La confianza del campo, en una palabra."""
-    if c.alerta_lectura is not None:
+    if c.alerta_lectura is not None or (nombre and nombre in alertados):
         return Text("⛔ alerta", style="bold red")
     if c.vacio:
         return Text("sin dato", style="dim")
@@ -75,8 +88,9 @@ def _cita(campo: Campo, ancho: int = ANCHO_CITA) -> Text:
     return Text(s, style="dim")
 
 
-def _fila_monto(t: Table, etiqueta: str, campo: Campo) -> None:
-    t.add_row(etiqueta, _pesos(campo.valor), _cita(campo), _marca(campo))
+def _fila_monto(t: Table, etiqueta: str, nombre: str, campo: Campo,
+                alertados: set[str] = frozenset()) -> None:
+    t.add_row(etiqueta, _pesos(campo.valor), _cita(campo), _marca(campo, nombre, alertados))
 
 
 def imprimir(con: Console, v: Veredicto, campos: dict[str, Campo],
@@ -92,16 +106,30 @@ def imprimir(con: Console, v: Veredicto, campos: dict[str, Campo],
 
     # --- exposicion ---------------------------------------------------
     con.print(Text("EXPOSICION", style="bold"))
+    alertados = _campos_alertados(v)
     t = Table.grid(padding=(0, 2))
     t.add_column(width=20)
     t.add_column(width=13, justify="right")
     t.add_column(width=20)
     t.add_column(width=16)
-    _fila_monto(t, "Capital adeudado", campos.get("capital_adeudado", Campo(None)))
-    _fila_monto(t, "Garantia", campos.get("garantia_valor", Campo(None)))
+    _fila_monto(t, "Capital adeudado", "capital_adeudado",
+               campos.get("capital_adeudado", Campo(None)), alertados)
+    _fila_monto(t, "Garantia", "garantia_valor",
+               campos.get("garantia_valor", Campo(None)), alertados)
+    # Si el capital o la garantia estan alertados, el descubierto que sale de
+    # ellos no es un numero -- es un numero mal leido con formato de numero.
+    # Mostrarlo igual (como hacia antes esta version) es el mismo confident-
+    # wrong que el sistema existe para evitar, solo que en pantalla en vez de
+    # en el ruteo.
     desc = v.derivados.get("descubierto")
-    t.add_row(Text("Descubierto", style="bold"),
-              Text(_pesos(desc), style="bold red" if desc else "bold"), "", "")
+    desc_confiable = not ({"capital_adeudado", "garantia_valor", "descubierto"} & alertados)
+    if desc_confiable:
+        t.add_row(Text("Descubierto", style="bold"),
+                  Text(_pesos(desc), style="bold red" if desc else "bold"), "", "")
+    else:
+        t.add_row(Text("Descubierto", style="bold"),
+                  Text("no calculado", style="dim"), "",
+                  Text("⛔ alerta", style="bold red"))
     con.print(t)
     con.print()
 
@@ -144,12 +172,16 @@ def imprimir(con: Console, v: Veredicto, campos: dict[str, Campo],
     for al in v.alertas:
         con.print(Text("⛔ ALERTA DE LECTURA", style="bold red"))
         cita = f"[{al.documento}{f' p.{al.pagina}' if al.pagina else ''}]" if al.documento else ""
-        con.print(Text(f"  {al.campo:<18} OCR leyo: {al.crudo_ocr!r}"),
-                  Text(f"  {cita}", style="dim"))
-        for linea in _envolver(al.motivo, ANCHO - 24):
-            con.print(Text(f"  {'':<20}{linea}", style="dim"))
+        # Campo y cita en una linea propia -- el campo compuesto de un
+        # detector cruzado (p.ej. "garantia_valor/capital_adeudado") ya ocupa
+        # buena parte del ancho por si solo.
+        con.print(Text(f"  {al.campo}", style="bold"), Text(f"  {cita}", style="dim"))
+        for linea in _envolver(f"OCR leyo: {al.crudo_ocr}", ANCHO - 6):
+            con.print(Text(f"    {linea}"))
+        for linea in _envolver(al.motivo, ANCHO - 6):
+            con.print(Text(f"    {linea}", style="dim"))
         if al.confianza_ocr is not None:
-            con.print(Text(f"  {'':<20}confianza de pagina: {al.confianza_ocr:.0%}", style="dim"))
+            con.print(Text(f"    confianza de pagina: {al.confianza_ocr:.0%}", style="dim"))
         con.print(Text("  → Dato no utilizable. Verificar contra el documento.", style="yellow"))
         con.print()
 
