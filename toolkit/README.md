@@ -1,14 +1,12 @@
 # toolkit
 
-Piezas reusables extraídas de proyectos que ya funcionan, cada una en su
-propia carpeta con su propio README. La idea: la próxima vez que surja una
-idea de hackathon, mirar acá primero antes de escribir nada de cero.
+Piezas reusables, cada una en su propia carpeta con su propio README.
 
-| Carpeta | Qué es | Sacado de |
-|---|---|---|
-| [`qvac_brain/`](qvac_brain/README.md) | Inferencia local QVAC: generación de texto + embeddings | este repo |
-| [`whatsapp_wasender/`](whatsapp_wasender/README.md) | Cliente de WASenderApi: parsear webhook, mandar mensaje | BizBot (`D:\bot\bizbot-ventas`) |
-| [`hybrid_rag/`](hybrid_rag/README.md) | Ingesta de PDFs a pgvector + búsqueda híbrida RRF + multihop | AIRgent (`D:\AIRgent`) + talentbase (`D:\talentbase`) |
+| Carpeta | Qué es |
+|---|---|
+| [`qvac_brain/`](qvac_brain/README.md) | Inferencia local QVAC: generación de texto + embeddings |
+| [`whatsapp_wasender/`](whatsapp_wasender/README.md) | Cliente de WASenderApi: parsear webhook, mandar mensaje |
+| [`hybrid_rag/`](hybrid_rag/README.md) | Ingesta de PDFs a pgvector + búsqueda híbrida RRF + multihop |
 
 Cada módulo es standalone: solo importa de otro módulo del toolkit cuando
 hay una dependencia real (p. ej. `hybrid_rag/multihop.py` usa

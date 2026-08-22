@@ -1,9 +1,7 @@
 """Adaptador WASenderApi (https://wasenderapi.com) para enviar y recibir WhatsApp.
 
-Extraído de D:\\bot\\bizbot-ventas\\agent\\providers\\wasender.py — ahí estaba
-como una clase que implementaba una ABC multi-proveedor (Evolution/WAHA/
-WASenderApi intercambiables). Acá hay un solo proveedor, así que quedaron
-dos funciones planas en vez de una clase con interfaz.
+Un solo proveedor, asi que son dos funciones planas en vez de una clase con
+interfaz multi-proveedor.
 """
 import os
 from dataclasses import dataclass

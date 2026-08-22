@@ -22,7 +22,7 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # Historial en memoria, por número de WhatsApp. Se pierde al reiniciar el
 # proceso -- alcanza para un demo de hackathon. Si hace falta persistirlo
-# entre reinicios, mirar memory.py en BizBot como referencia.
+# entre reinicios, hace falta persistirlo.
 _historial_whatsapp: dict[str, list[dict]] = {}
 _ultimo_mensaje_id: dict[str, str] = {}
 

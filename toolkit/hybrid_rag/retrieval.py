@@ -1,13 +1,9 @@
 """Retrieval híbrido: fusión RRF de búsqueda vectorial (pgvector, coseno) y
 léxica (tsvector nativo de Postgres).
 
-Mismo algoritmo de fusión que usa D:\\talentbase\\src\\lib\\match\\run-match.ts
-(el paso "4. Hybrid retrieval") -- ahí armaban esta CTE con Drizzle; acá es
-la misma CTE escrita directo con psycopg, sin ORM.
-
-A diferencia de AIRgent (Chroma + un índice BM25 aparte en un .pkl), acá
-todo vive en una sola tabla de Postgres: menos piezas móviles, y es lo que
-ya vas a tener levantado con docker-compose de cualquier forma.
+Todo vive en una sola tabla de Postgres en vez de un vector store aparte
+más un índice léxico en disco: menos piezas móviles, y Postgres ya está
+levantado con docker-compose de cualquier forma.
 """
 from dataclasses import dataclass
 
@@ -74,9 +70,8 @@ def buscar_hibrido(query_texto: str, query_vec: list[float], top_k: int = 8) -> 
 
 def buscar_vectorial(query_vec: list[float], top_k: int = 5) -> list[Chunk]:
     """Búsqueda de un solo brazo (solo vector, sin fusión). La usa
-    multihop.py para cada sub-consulta -- en talentbase los hops tampoco
-    fusionan con léxico, van directo a vector (ver docs/agentic-rag.md
-    de ese repo, sección "After")."""
+    multihop.py para cada sub-consulta -- los hops no fusionan con léxico,
+    van directo a vector."""
     sql = """
         SELECT id, doc_id, contenido, fuente
         FROM chunks

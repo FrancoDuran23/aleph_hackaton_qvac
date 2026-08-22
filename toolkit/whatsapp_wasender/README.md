@@ -4,11 +4,8 @@ Cliente mínimo para WASenderApi (servicio cloud de WhatsApp, no hace falta
 correr un gateway propio como Evolution API). Dos funciones: parsear un
 webhook entrante, mandar un mensaje.
 
-**Origen**: `agent/providers/wasender.py` en `D:\bot\bizbot-ventas`
-(BizBot). Ahí implementaba una ABC (`ProveedorWhatsApp`) pensada para
-soportar múltiples proveedores intercambiables (Evolution/WAHA/WASenderApi)
-en un bot multi-tenant. Acá se sacó la ABC — para un solo proveedor fijo
-es una abstracción de más — y quedaron las dos funciones directas.
+Sin ABC ni capa de proveedores intercambiables: para un solo proveedor fijo
+es una abstracción de más. Quedaron las dos funciones directas.
 
 ## Qué hay acá
 
@@ -56,14 +53,10 @@ async def webhook(request: Request):
 
 ## Qué NO se trajo
 
-- La ABC `ProveedorWhatsApp` / soporte multi-proveedor — si en algún
-  hackathon futuro hace falta soportar Evolution API o WAHA además de
-  WASenderApi, mirá `agent/providers/base.py` y `agent/providers/evolution.py`
-  en BizBot para el patrón.
-- `WASenderSessionProvider` (creación de sesión, QR pairing, multi-tenant)
-  — eso vive en `onboarding/providers/wasender_sessions.py` de BizBot, solo
-  hace falta si necesitás crear sesiones de WhatsApp por código en vez de
-  desde el dashboard.
-- Verificación de firma del webhook — el original tampoco la tiene, WASenderApi
+- Soporte multi-proveedor (Evolution API, WAHA) — hace falta una capa de
+  abstracción que acá no existe.
+- Creación de sesión por código (QR pairing, multi-tenant) — solo hace
+  falta si necesitás crear sesiones de WhatsApp sin pasar por el dashboard.
+- Verificación de firma del webhook — WASenderApi
   no manda ninguna. Si esto se convirtiera en producto real habría que
   agregar algún secreto compartido en la URL como mínimo.

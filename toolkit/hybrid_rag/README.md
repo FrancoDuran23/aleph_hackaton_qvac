@@ -4,26 +4,16 @@ Ingesta de una carpeta de PDFs a pgvector + búsqueda híbrida (vector +
 léxica, fusionadas con RRF) + multihop (unas pocas sub-búsquedas
 adicionales por sub-consulta, generadas por LLM).
 
-**Origen** — esto no viene de un solo proyecto, combina dos:
+El trozado es una ventana deslizante genérica, no por estructura del
+documento: el dominio de los PDFs no se sabe hasta el día del hackathon.
 
-- **Ingesta y embeddings**: patrón de `D:\AIRgent\legal_corpus_ingestor.py`
-  y `legal_rag.py` (pypdf + `google-genai` `embed_content`). El trozado
-  original era por artículo legal (regex específico del dominio); acá es
-  una ventana deslizante genérica porque el dominio de los PDFs no se
-  sabe hasta el día del hackathon.
-- **Multihop**: algoritmo de `D:\talentbase\src\lib\match\query-decomposer.ts`
-  + el bloque "4.2 multi-hop retrieval" de `run-match.ts` — ese SÍ es el
-  proyecto de RRHH con pgvector que se buscaba originalmente (no
-  `rrhh-larioja`, que resultó ser un Django CRUD sin nada de IA). Ahí las
-  sub-consultas eran 3 facetas fijas de reclutamiento (skills / seniority
-  / ubicación); acá se generalizó para que el LLM decida las sub-consultas
-  según la pregunta, sin asumir dominio.
+Las sub-consultas del multihop las decide el LLM según la pregunta, sin
+facetas fijas ni supuestos de dominio.
 
-También se simplificó el stack: talentbase usaba cuatro proveedores
-externos y cuatro API keys para embeddings, descomposición, rerank y
-respuesta. Acá quedó **cero**: todo corre sobre un modelo QVAC local, vía
-`qvac_brain`. Sin rerank: es un cross-encoder opcional, no hace falta para
-un corpus chico.
+Toda la inferencia — embeddings, descomposición y respuesta — corre sobre un
+modelo QVAC local vía `qvac_brain`. **Cero proveedores externos, cero API
+keys.** Sin rerank: es un cross-encoder opcional y no hace falta para un
+corpus chico.
 
 ## Cómo funciona una búsqueda
 
@@ -42,7 +32,7 @@ pregunta del usuario
 No es un loop iterativo ("buscar, evaluar si alcanza, reformular, volver a
 buscar") — son como máximo `MAX_HOPS=3` sub-consultas generadas **una
 sola vez**, cada una busca en paralelo conceptual (no hay dependencia
-entre hops), y todo se une en un solo pool. Igual que en talentbase: esto
+entre hops), y todo se une en un solo pool. Esto
 suma cobertura para vocabulario que la pregunta original no menciona, no
 reemplaza ni reordena la búsqueda base.
 
@@ -84,8 +74,7 @@ Si el hackathon NO necesita multihop (corpus chico, preguntas simples),
 usar directo `retrieval.buscar_hibrido()` y ahorrarse las llamadas extra
 de descomposición — es más rápido y más barato.
 
-## Qué NO se trajo de talentbase
-
+## Qué quedó afuera a propósito
 - Voyage AI, Cohere rerank, Supabase Storage — dependencias de producción
   que no valen la pena para un corpus de PDFs cargados a mano.
 - El parseo estructurado de la pregunta en campos tipados (`ParsedQuery`

@@ -2,21 +2,13 @@
 en unas pocas sub-consultas y las busca por separado, sumando resultados
 nuevos al pool sin pisar el resultado base.
 
-Algoritmo (no la implementación línea por línea) extraído de
-D:\\talentbase\\src\\lib\\match\\query-decomposer.ts +
-D:\\talentbase\\src\\lib\\match\\run-match.ts (bloque "4.2 multi-hop retrieval").
-Ahí estaba armado para matchear candidatos contra vacantes con 3 facetas
-fijas de RRHH (skills / seniority_domain / location_language). Acá se
-generaliza: como el dominio de los PDFs no se conoce hasta el día del
-hackathon, es el LLM el que decide las sub-consultas en vez de usar
-facetas hardcodeadas.
+Como el dominio de los PDFs no se conoce hasta el día del hackathon, es el
+LLM el que decide las sub-consultas en vez de usar facetas hardcodeadas.
 
-Mismo diseño de fondo que el original: esto NO es un loop "buscar ->
-evaluar si alcanza -> reformular -> buscar de nuevo" (talentbase también
-aclara que no tiene ese "Sufficient Context Agent"). Son hasta MAX_HOPS
-sub-consultas generadas una sola vez, cada una busca de forma
-independiente por similitud vectorial, y todo se une en un pool sin
-volver a fusionar con RRF. Aporta cobertura para vocabulario que la
+Esto NO es un loop "buscar -> evaluar si alcanza -> reformular -> buscar de
+nuevo". Son hasta MAX_HOPS sub-consultas generadas una sola vez, cada una
+busca de forma independiente por similitud vectorial, y todo se une en un
+pool sin volver a fusionar con RRF. Aporta cobertura para vocabulario que la
 pregunta original no menciona; no reemplaza la búsqueda base.
 """
 import json

@@ -1,10 +1,9 @@
 """PDF folder -> chunks -> embeddings -> pgvector.
 
-Extracción de PDF con pypdf, adaptada de D:\\AIRgent\\legal_corpus_ingestor.py.
-El trozado ahí era por artículo legal (regex "Articulo N") porque el
-dominio era fijo (textos legales). Acá el dominio no se conoce hasta el
-día del hackathon, así que el trozado es una ventana deslizante genérica
-sobre caracteres -- funciona con cualquier PDF, sin asumir estructura.
+Extracción de PDF con pypdf. El dominio de los documentos no se conoce
+hasta el día del hackathon, así que el trozado es una ventana deslizante
+genérica sobre caracteres -- funciona con cualquier PDF, sin asumir
+estructura.
 
 Correr (desde la raíz del repo, con las env vars cargadas):
     python -m toolkit.hybrid_rag.ingest [carpeta_pdfs]

@@ -56,7 +56,7 @@ def inicializar_esquema(conn: psycopg.Connection, embedding_dim: int) -> None:
 
 def reemplazar_chunks(conn: psycopg.Connection, filas: list[dict], embeddings: list[list[float]]) -> None:
     """Idempotente: borra todo lo indexado antes y lo carga de cero, igual
-    que el ingestor de AIRgent (el orden de los PDFs no importa, los ids
+    que el ingestor original (el orden de los PDFs no importa, los ids
     son deterministicos)."""
     with conn.cursor() as cur:
         cur.execute("DELETE FROM chunks")
