@@ -267,13 +267,29 @@ async def analizar_cliente(carpeta: Path, cliente_id: int, *, bridge: bool,
     from .redaccion import redactar
 
     docs = leer_carpeta(carpeta)
-    motor_ctx = MotorBridge(verboso=False) if bridge else Motor(provider=provider,
-                                                                verboso=False)
-    async with motor_ctx as motor:
+
+    # Modelo local por defecto; el bridge es fallback. Con --bridge se fuerza.
+    if bridge:
+        motor_ctx = MotorBridge(verboso=False)
+    else:
+        motor_ctx = Motor(provider=provider, verboso=False)
+    try:
+        motor = await motor_ctx.__aenter__()
+    except Exception as e:
+        if bridge:
+            raise
+        print(f"aviso: modelo local no disponible ({type(e).__name__}: {e}); "
+              f"usando el bridge como fallback", file=sys.stderr)
+        motor_ctx = MotorBridge(verboso=False)
+        motor = await motor_ctx.__aenter__()
+
+    try:
         campos = await extraer_carpeta(motor, docs)
         v = analizar(cliente_id, campos, nombre=campos["titular_contrato"].valor,
                      docs_ilegibles=documentos_ilegibles(docs), hoy=hoy)
         nota = await redactar(motor, v) if con_nota else None
+    finally:
+        await motor_ctx.__aexit__(None, None, None)
     return v, campos, nota
 
 
@@ -299,7 +315,9 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--json", action="store_true", dest="como_json")
     a.add_argument("--sin-nota", action="store_true",
                    help="saltea la redaccion (una llamada menos)")
-    a.add_argument("--bridge", action="store_true", default=True)
+    a.add_argument("--bridge", action="store_true",
+                   help="forzar el bridge HTTP en vez del modelo local "
+                        "(por defecto: local, con el bridge como fallback)")
     a.add_argument("--provider")
 
     c = sub.add_parser("cartera", help="resumen sobre todas las carpetas")

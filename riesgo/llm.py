@@ -81,6 +81,33 @@ TIMEOUT_DELEGADO_MS = 60_000
 PARAMS_DETERMINISTAS: dict[str, Any] = {"temp": 0.0, "top_p": 1.0, "seed": 7}
 
 
+def _rutas_worker() -> dict[str, str]:
+    """Rutas explicitas del worker, tolerando el hoisting de npm.
+
+    ``install-worker`` deja el binario nativo ``bare`` en el node_modules de
+    nivel superior, mientras el SDK lo busca anidado bajo ``@qvac/sdk`` -- en
+    Windows eso hace fallar ``Client()`` con WorkerNotFoundError. Si lo
+    encontramos, se lo pasamos explicito; si no, devolvemos {} y el SDK resuelve
+    solo (instalacion normal, wheel bundle, o QVAC_*_PATH en el entorno).
+    """
+    try:
+        import os
+
+        from tetherto.qvac_sdk.client import managed_worker_prefix
+    except Exception:
+        return {}
+    try:
+        prefix = managed_worker_prefix()
+        worker = prefix / "node_modules" / "@qvac" / "sdk" / "dist" / "server" / "worker.js"
+        nombre = "bare.exe" if os.name == "nt" else "bare"
+        bares = list(prefix.rglob(nombre))
+        if bares and worker.exists():
+            return {"bare_path": str(bares[0]), "worker_path": str(worker)}
+    except Exception:
+        pass
+    return {}
+
+
 @dataclass(frozen=True)
 class Respuesta:
     """Resultado de una completion, con la latencia ya medida."""
@@ -152,7 +179,9 @@ class Motor:
 
     async def __aenter__(self) -> "Motor":
         inicio = time.perf_counter()
-        self._cliente = Client()
+        # Rutas explicitas del worker si las podemos resolver (tolera el
+        # hoisting de npm en Windows); si no, Client() resuelve solo.
+        self._cliente = Client(**_rutas_worker())
         # connect() devuelve el Client, no el transport; el transport sale de
         # la propiedad. En el SDK 0.17.1 pasar el Client a load_model rompe con
         # "'Client' object has no attribute 'call_stream'".
