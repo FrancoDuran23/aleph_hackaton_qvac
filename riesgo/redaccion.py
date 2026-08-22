@@ -13,6 +13,7 @@ un veredicto que ya está tomado.
 from __future__ import annotations
 
 import json
+import re
 
 from .modelo import Veredicto
 
@@ -70,12 +71,13 @@ async def redactar(motor, v: Veredicto, max_tokens: int = 512) -> str | None:
                                   system=SISTEMA, max_tokens=max_tokens)
     except Exception:
         return None
-    # QWEN3 emite su razonamiento en <think>...</think>; la nota es lo que va
-    # despues. Sin esto, el cierre del bloque se cuela en la salida (y el
-    # presupuesto de tokens se lo comia el razonamiento). max_tokens mas alto
-    # deja lugar para el razonamiento y la nota completa.
-    texto = r.texto
-    if "</think>" in texto:
-        texto = texto.rsplit("</think>", 1)[-1]
+    # QWEN3 emite su razonamiento en <think>...</think>; el razonamiento NUNCA
+    # va a pantalla. Se sacan los bloques completos; si quedo un <think> sin
+    # cerrar (respuesta truncada dentro del razonamiento) no hay nota utilizable
+    # y se descarta entera, en vez de mostrar el razonamiento crudo. max_tokens
+    # alto deja lugar para el razonamiento y la nota completa.
+    texto = re.sub(r"<think>.*?</think>", "", r.texto, flags=re.DOTALL)
+    if "<think>" in texto or "</think>" in texto:
+        return None
     texto = texto.strip()
     return texto or None
