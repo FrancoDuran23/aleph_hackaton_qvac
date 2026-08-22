@@ -28,7 +28,8 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from .modelo import BAJA, CONFIRMADA, FIRME, GRAVE, MEDIA, PROBABLE, Campo, Veredicto
+from .modelo import (BAJA, CONFIRMADA, DESCARTADA, FIRME, GRAVE, MEDIA, PROBABLE,
+                     Campo, Veredicto)
 
 ANCHO = 80
 
@@ -37,6 +38,14 @@ ANCHO = 80
 COLOR_RUTA = {"LEGALES": "bold red", "REFINANCIACION": "bold yellow",
               "COBRANZAS": "bold green"}
 COLOR_GRAVEDAD = {GRAVE: "bold red", MEDIA: "yellow", BAJA: "dim"}
+
+# Etiquetas en ingles para la salida. Los VALORES internos siguen en espaniol
+# (son claves de datos que el eval compara contra el ground_truth); aca solo se
+# traduce lo que ve el usuario.
+RUTEO_EN = {"LEGALES": "LEGAL", "REFINANCIACION": "REFINANCE", "COBRANZAS": "COLLECTIONS"}
+GRAVEDAD_EN = {GRAVE: "SEVERE", MEDIA: "MEDIUM", BAJA: "LOW"}
+ESTADO_EN = {CONFIRMADA: "CONFIRMED", PROBABLE: "PROBABLE", DESCARTADA: "DISCARDED"}
+CONFIANZA_EN = {FIRME: "FIRM", "CON RESERVAS": "WITH RESERVATIONS"}
 
 # Ancho de columna de citas. Fijo a proposito: una cita larga
 # ("[correspondencia.txt p.1]", 26 chars) rompia la grilla de HISTORIAL
@@ -65,14 +74,14 @@ def _campos_alertados(v: Veredicto) -> set[str]:
 def _marca(c: Campo, nombre: str | None = None, alertados: set[str] = frozenset()) -> Text:
     """La confianza del campo, en una palabra."""
     if c.alerta_lectura is not None or (nombre and nombre in alertados):
-        return Text("⛔ alerta", style="bold red")
+        return Text("⛔ alert", style="bold red")
     if c.vacio:
-        return Text("sin dato", style="dim")
+        return Text("no data", style="dim")
     if not c.grounding_ok:
-        return Text("⚠ no verificado", style="bold red")
+        return Text("⚠ unverified", style="bold red")
     if c.ocr_confianza is not None and c.ocr_confianza < 0.75:
         return Text(f"⚠ ocr {c.ocr_confianza:.0%}", style="yellow")
-    return Text("✓ verificado", style="green")
+    return Text("✓ verified", style="green")
 
 
 def _cita(campo: Campo, ancho: int = ANCHO_CITA) -> Text:
@@ -95,26 +104,26 @@ def _fila_monto(t: Table, etiqueta: str, nombre: str, campo: Campo,
 
 def imprimir(con: Console, v: Veredicto, campos: dict[str, Campo],
              nota: str | None, disparo: str | None) -> None:
-    cabecera = Text(f"CLIENTE {v.cliente_id}", style="bold")
+    cabecera = Text(f"CLIENT {v.cliente_id}", style="bold")
     if v.nombre:
         cabecera.append(f" — {v.nombre}", style="bold white")
     con.print()
     con.print(cabecera)
     if disparo:
-        con.print(Text(f"Disparo: {disparo}", style="dim"))
+        con.print(Text(f"Trigger: {disparo}", style="dim"))
     con.print()
 
     # --- exposicion ---------------------------------------------------
-    con.print(Text("EXPOSICION", style="bold"))
+    con.print(Text("EXPOSURE", style="bold"))
     alertados = _campos_alertados(v)
     t = Table.grid(padding=(0, 2))
     t.add_column(width=20)
     t.add_column(width=13, justify="right")
     t.add_column(width=20)
     t.add_column(width=16)
-    _fila_monto(t, "Capital adeudado", "capital_adeudado",
+    _fila_monto(t, "Amount owed", "capital_adeudado",
                campos.get("capital_adeudado", Campo(None)), alertados)
-    _fila_monto(t, "Garantia", "garantia_valor",
+    _fila_monto(t, "Collateral", "garantia_valor",
                campos.get("garantia_valor", Campo(None)), alertados)
     # Si el capital o la garantia estan alertados, el descubierto que sale de
     # ellos no es un numero -- es un numero mal leido con formato de numero.
@@ -124,17 +133,17 @@ def imprimir(con: Console, v: Veredicto, campos: dict[str, Campo],
     desc = v.derivados.get("descubierto")
     desc_confiable = not ({"capital_adeudado", "garantia_valor", "descubierto"} & alertados)
     if desc_confiable:
-        t.add_row(Text("Descubierto", style="bold"),
+        t.add_row(Text("Shortfall", style="bold"),
                   Text(_pesos(desc), style="bold red" if desc else "bold"), "", "")
     else:
-        t.add_row(Text("Descubierto", style="bold"),
-                  Text("no calculado", style="dim"), "",
-                  Text("⛔ alerta", style="bold red"))
+        t.add_row(Text("Shortfall", style="bold"),
+                  Text("not computed", style="dim"), "",
+                  Text("⛔ alert", style="bold red"))
     con.print(t)
     con.print()
 
     # --- historial ------------------------------------------------------
-    con.print(Text("HISTORIAL", style="bold"))
+    con.print(Text("HISTORY", style="bold"))
     h = Table.grid(padding=(0, 2))
     h.add_column(width=44)
     h.add_column(width=20)
@@ -142,20 +151,20 @@ def imprimir(con: Console, v: Veredicto, campos: dict[str, Campo],
     pagos = campos.get("pagos_emitidos", Campo(None))
     if punt is not None and pagos.valor:
         n = round(punt * pagos.valor)
-        h.add_row(f"{n} de {pagos.valor} pagos puntuales", _cita(pagos))
+        h.add_row(f"{n} of {pagos.valor} payments on time", _cita(pagos))
     aviso = campos.get("aviso_previo", Campo(None))
     if aviso.valor is True:
-        h.add_row("Aviso previo del deudor", _cita(aviso))
+        h.add_row("Prior notice from borrower", _cita(aviso))
     elif aviso.valor is False:
-        h.add_row(Text("Sin aviso previo", style="dim"), _cita(aviso))
+        h.add_row(Text("No prior notice", style="dim"), _cita(aviso))
     con.print(h)
     con.print()
 
     # --- contradicciones -------------------------------------------------
     for hall in v.hallazgos:
-        etiqueta = f"⚠ CONTRADICCION — {hall.gravedad.upper()}"
+        etiqueta = f"⚠ CONTRADICTION — {GRAVEDAD_EN.get(hall.gravedad, hall.gravedad)}"
         if hall.estado != CONFIRMADA:
-            etiqueta += f"  ({hall.estado.lower()})"
+            etiqueta += f"  ({ESTADO_EN.get(hall.estado, hall.estado).lower()})"
         # PROBABLE se lee como duda, no como hallazgo: mismo amarillo que
         # CON RESERVAS, sin importar la gravedad. Es lo que causa lo otro.
         color = "yellow" if hall.estado == PROBABLE else COLOR_GRAVEDAD.get(hall.gravedad, "")
@@ -170,38 +179,38 @@ def imprimir(con: Console, v: Veredicto, campos: dict[str, Campo],
     # pantalla porque es lo que convierte la alerta en accionable: el analista
     # abre el documento, va a la pagina citada, y verifica en cinco segundos.
     for al in v.alertas:
-        con.print(Text("⛔ ALERTA DE LECTURA", style="bold red"))
+        con.print(Text("⛔ READING ALERT", style="bold red"))
         cita = f"[{al.documento}{f' p.{al.pagina}' if al.pagina else ''}]" if al.documento else ""
         # Campo y cita en una linea propia -- el campo compuesto de un
         # detector cruzado (p.ej. "garantia_valor/capital_adeudado") ya ocupa
         # buena parte del ancho por si solo.
         con.print(Text(f"  {al.campo}", style="bold"), Text(f"  {cita}", style="dim"))
-        for linea in _envolver(f"OCR leyo: {al.crudo_ocr}", ANCHO - 6):
+        for linea in _envolver(f"OCR read: {al.crudo_ocr}", ANCHO - 6):
             con.print(Text(f"    {linea}"))
         for linea in _envolver(al.motivo, ANCHO - 6):
             con.print(Text(f"    {linea}", style="dim"))
         if al.confianza_ocr is not None:
-            con.print(Text(f"    confianza de pagina: {al.confianza_ocr:.0%}", style="dim"))
-        con.print(Text("  → Dato no utilizable. Verificar contra el documento.", style="yellow"))
+            con.print(Text(f"    page confidence: {al.confianza_ocr:.0%}", style="dim"))
+        con.print(Text("  → Value unusable. Verify against the document.", style="yellow"))
         con.print()
 
     # --- nota ------------------------------------------------------------
     if nota:
-        con.print(Text("NOTA INTERNA", style="bold"))
+        con.print(Text("INTERNAL NOTE", style="bold"))
         for linea in _envolver(nota, ANCHO - 4):
             con.print(Text(f"  {linea}"))
         con.print()
 
     # --- ruteo -----------------------------------------------------------
     con.print(Panel(
-        Text.assemble((f"→ {v.ruteo}", COLOR_RUTA.get(v.ruteo, "bold")),
+        Text.assemble((f"→ {RUTEO_EN.get(v.ruteo, v.ruteo)}", COLOR_RUTA.get(v.ruteo, "bold")),
                       ("\n" + v.motivo, "")),
-        title="RUTEO", title_align="left", width=ANCHO - 2))
+        title="ROUTING", title_align="left", width=ANCHO - 2))
 
     # --- lo que no se pudo garantizar ------------------------------------
     if v.confianza != FIRME:
         con.print()
-        con.print(Text(f"⚠ {v.confianza} — el veredicto se emitio igual",
+        con.print(Text(f"⚠ {CONFIANZA_EN.get(v.confianza, v.confianza)} — verdict issued anyway",
                        style="bold yellow"))
         for a in v.advertencias:
             if a.degrada:
@@ -209,13 +218,13 @@ def imprimir(con: Console, v: Veredicto, campos: dict[str, Campo],
                     con.print(Text(f"    {linea}", style="yellow"))
     else:
         con.print()
-        con.print(Text("✓ FIRME — ningun dato de la decision tiene reservas",
+        con.print(Text("✓ FIRM — no decision input has reservations",
                        style="green"))
 
     anotadas = [a for a in v.advertencias if not a.degrada]
     if anotadas:
         con.print()
-        con.print(Text("Anotado, sin efecto en la decision:", style="dim"))
+        con.print(Text("Noted, no effect on the decision:", style="dim"))
         for a in anotadas[:4]:
             for linea in _envolver(f"{a.campo}: {a.motivo}", ANCHO - 6):
                 con.print(Text(f"    {linea}", style="dim"))
@@ -278,8 +287,8 @@ async def analizar_cliente(carpeta: Path, cliente_id: int, *, bridge: bool,
     except Exception as e:
         if bridge:
             raise
-        print(f"aviso: modelo local no disponible ({type(e).__name__}: {e}); "
-              f"usando el bridge como fallback", file=sys.stderr)
+        print(f"notice: local model unavailable ({type(e).__name__}: {e}); "
+              f"falling back to the bridge", file=sys.stderr)
         motor_ctx = MotorBridge(verboso=False)
         motor = await motor_ctx.__aenter__()
 
@@ -299,7 +308,7 @@ def _disparo(carpeta: Path) -> str | None:
         return None
     d = json.loads(t.read_text(encoding="utf-8"))
     dias = d.get("dias_atraso")
-    return f"{dias} dias de atraso" if dias else None
+    return f"{dias} days past due" if dias else None
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -309,18 +318,18 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="riesgo", description=__doc__)
     sub = ap.add_subparsers(dest="comando", required=True)
 
-    a = sub.add_parser("analizar", help="analiza una carpeta de cliente")
-    a.add_argument("--cliente", required=True, help="id o nombre de carpeta")
+    a = sub.add_parser("analizar", help="analyze a client folder")
+    a.add_argument("--cliente", required=True, help="folder id or name")
     a.add_argument("--dataset", default="dataset")
     a.add_argument("--json", action="store_true", dest="como_json")
     a.add_argument("--sin-nota", action="store_true",
-                   help="saltea la redaccion (una llamada menos)")
+                   help="skip the drafted note (one less model call)")
     a.add_argument("--bridge", action="store_true",
-                   help="forzar el bridge HTTP en vez del modelo local "
-                        "(por defecto: local, con el bridge como fallback)")
+                   help="force the HTTP bridge instead of the local model "
+                        "(default: local, with the bridge as fallback)")
     a.add_argument("--provider")
 
-    c = sub.add_parser("cartera", help="resumen sobre todas las carpetas")
+    c = sub.add_parser("cartera", help="summary over all folders")
     c.add_argument("--dataset", default="dataset")
 
     args = ap.parse_args(argv)
@@ -334,7 +343,7 @@ def main(argv: list[str] | None = None) -> int:
     if not carpeta.is_dir():
         carpeta = base / f"cliente_{args.cliente}"
     if not carpeta.is_dir():
-        print(f"no encontre {carpeta}", file=sys.stderr)
+        print(f"not found: {carpeta}", file=sys.stderr)
         return 1
 
     cliente_id = int("".join(ch for ch in carpeta.name if ch.isdigit()) or 0)

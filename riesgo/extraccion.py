@@ -231,7 +231,7 @@ async def extraer_documento(motor, doc: Documento, tipo: str) -> dict[str, Campo
             alerta = separador_miles_roto(bruto)
             if (not alerta and valor is None and bruto
                     and any(ch.isdigit() for ch in str(bruto))):
-                alerta = "monto con formato no interpretable"
+                alerta = "amount with uninterpretable format"
 
         salida[nombre] = Campo(
             valor=None if alerta else valor,

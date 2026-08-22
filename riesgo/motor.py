@@ -41,10 +41,10 @@ def _advertencias(campos: dict[str, Campo], influyen: tuple[str, ...],
             # limpio. Ese es el peor error posible de este sistema.
             if campo.doc in docs_ilegibles:
                 avisos.append(Advertencia(
-                    nombre, f"{campo.doc} no produjo texto legible: el dato "
-                            f"puede existir y no haberse leido", degrada=pesa))
+                    nombre, f"{campo.doc} produced no readable text: the value "
+                            f"may exist and not have been read", degrada=pesa))
             else:
-                avisos.append(Advertencia(nombre, "sin dato en el documento", degrada=False))
+                avisos.append(Advertencia(nombre, "no data in the document", degrada=False))
 
     for h in hallazgos:
         if h.estado == PROBABLE:
@@ -52,7 +52,7 @@ def _advertencias(campos: dict[str, Campo], influyen: tuple[str, ...],
             # OCR) no fuerza el ruteo, pero SI degrada el caso a CON RESERVAS:
             # hay un posible defecto de garantia que no se pudo confirmar. Mejor
             # que un analista lo mire, no que el caso salga FIRME y equivocado.
-            avisos.append(Advertencia(h.tipo, f"hallazgo no confirmado: {h.detalle}",
+            avisos.append(Advertencia(h.tipo, f"unconfirmed finding: {h.detalle}",
                                       degrada=(h.gravedad == GRAVE)))
 
     return avisos
@@ -115,7 +115,7 @@ def analizar(cliente_id: int, campos: dict[str, Campo], *,
             pagina=gv.pagina, confianza_ocr=gv.ocr_confianza)]
         advertencias_b.append(Advertencia(
             "capital/garantia",
-            f"{motivo_b}: monto no confiable, revisar a mano", degrada=True))
+            f"{motivo_b}: amount not trustworthy, review manually", degrada=True))
 
     aviso = campos.get("aviso_previo", Campo(None)).valor
     ruta, motivo, influyen = rutear(graves, derivados_ruteo, aviso, corte=corte)
