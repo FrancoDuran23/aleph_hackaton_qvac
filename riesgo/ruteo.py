@@ -13,6 +13,11 @@ from __future__ import annotations
 
 from .modelo import COBRANZAS, LEGALES, REFINANCIACION, Hallazgo
 
+
+def _pesos(v: float) -> str:
+    """Formato local: punto para miles. Solo presentación."""
+    return f"${v:,.0f}".replace(",", ".")
+
 # Politica, no optimizacion. Sobre el dataset de desarrollo:
 #   $500.000 manda 13/20 a legales, $1.000.000 manda 6/20, $2.000.000 manda 3/20.
 # No hay valor optimo: hay que elegirlo y defenderlo. Ver seccion 13 del SDD.
@@ -44,7 +49,8 @@ def rutear(graves: list[Hallazgo], derivados: dict, aviso_previo: bool | None,
         return LEGALES, f"defecto formal en la garantia ({tipos})", INFLUYEN["contradiccion_grave"]
 
     if desc is not None and desc > corte:
-        return LEGALES, f"descubierto de ${desc:,.0f} sobre el corte de ${corte:,.0f}", INFLUYEN["descubierto"]
+        return LEGALES, (f"descubierto de {_pesos(desc)} sobre el corte "
+                         f"de {_pesos(corte)}"), INFLUYEN["descubierto"]
 
     if punt is not None and punt < PUNTUALIDAD_MINIMA:
         return LEGALES, f"puntualidad de {punt:.0%}, bajo el minimo de {PUNTUALIDAD_MINIMA:.0%}", INFLUYEN["puntualidad"]
