@@ -271,6 +271,7 @@ diferencia entre pedir JSON y garantizarlo.
 | | |
 |---|---|
 | [`METRICAS-corridas.md`](METRICAS-corridas.md) | las corridas reales del pipeline completo |
+| [`BENCHMARK-CAMPOS.md`](BENCHMARK-CAMPOS.md) | 440 extracciones clasificadas, y los 17 marcados desarmados |
 | [`COMPARATIVA-MODELOS.md`](COMPARATIVA-MODELOS.md) | cuatro variantes medidas, y el límite que destapó |
 | [`HALLAZGOS-franco.md`](HALLAZGOS-franco.md) | los bugs que enseñan algo, y el feedback del SDK |
 | [`METRICAS.md`](METRICAS.md) | cada número con el comando que lo reproduce |
