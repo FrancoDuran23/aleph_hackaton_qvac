@@ -51,7 +51,7 @@ CONFIANZA_EN = {FIRME: "FIRM", "CON RESERVAS": "WITH RESERVATIONS"}
 # ("[correspondencia.txt p.1]", 26 chars) rompia la grilla de HISTORIAL
 # (columna de 20) empujando todo lo que venia despues. Se trunca, no se
 # ensancha -- la grilla no se negocia por un nombre de archivo largo.
-ANCHO_CITA = 20
+ANCHO_CITA = 26
 
 
 def _pesos(v: float | None) -> str:
@@ -146,7 +146,7 @@ def imprimir(con: Console, v: Veredicto, campos: dict[str, Campo],
     con.print(Text("HISTORY", style="bold"))
     h = Table.grid(padding=(0, 2))
     h.add_column(width=44)
-    h.add_column(width=20)
+    h.add_column(width=ANCHO_CITA)
     punt = v.derivados.get("puntualidad")
     pagos = campos.get("pagos_emitidos", Campo(None))
     if punt is not None and pagos.valor:
