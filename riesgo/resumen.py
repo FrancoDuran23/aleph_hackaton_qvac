@@ -110,6 +110,9 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dataset", default="dataset")
     ap.add_argument("--corte", type=float, default=None)
+    ap.add_argument("--con-ocr", action="store_true",
+                    help="asume las escaneadas legibles (el OCR ya esta integrado); "
+                         "por defecto simula el escenario sin OCR")
     args = ap.parse_args(argv)
 
     from .evaluar import HOY, construir_campos
@@ -124,13 +127,22 @@ def main(argv: list[str] | None = None) -> int:
 
     filas = []
     for c in gt:
-        campos, ilegibles = construir_campos(c, sin_ocr=True)
+        campos, ilegibles = construir_campos(c, sin_ocr=not args.con_ocr)
         v = analizar(c["cliente_id"], campos, nombre=c["nombre"],
                      docs_ilegibles=ilegibles,
                      corte=args.corte or CORTE_DESCUBIERTO, hoy=HOY)
         filas.append((c, v, v.ruteo == c["ruteo_esperado"]))
 
-    print(bloque(filas, modelo="QWEN3_1_7B_INST_Q4", etiqueta=args.dataset))
+    # Decir de dónde salen los campos es obligatorio: esta vista NO corre el
+    # pipeline (no llama al modelo ni al OCR), los toma del ground truth. Sus
+    # cifras no son las de `evaluar --real` y confundirlas es reportar de menos.
+    origen = ("campos del ground truth, escaneadas asumidas legibles"
+              if args.con_ocr else
+              "campos del ground truth, simulando que el OCR no existe")
+    print(bloque(filas, modelo="QWEN3_1_7B_INST_Q4",
+                 etiqueta=f"{args.dataset} · {origen}"))
+    print("  Las cifras del pipeline real (con modelo y OCR) estan en")
+    print("  METRICAS-corridas.md y BENCHMARK-CAMPOS.md.\n")
     return 0
 
 

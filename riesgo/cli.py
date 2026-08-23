@@ -331,12 +331,15 @@ def main(argv: list[str] | None = None) -> int:
 
     c = sub.add_parser("cartera", help="summary over all folders")
     c.add_argument("--dataset", default="dataset")
+    c.add_argument("--con-ocr", action="store_true",
+                   help="assume scanned deeds are readable (OCR is integrated)")
 
     args = ap.parse_args(argv)
 
     if args.comando == "cartera":
         from .resumen import main as resumen_main
-        return resumen_main(["--dataset", args.dataset])
+        extra = ["--con-ocr"] if getattr(args, "con_ocr", False) else []
+        return resumen_main(["--dataset", args.dataset] + extra)
 
     base = Path(args.dataset)
     carpeta = base / args.cliente
