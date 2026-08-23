@@ -25,10 +25,23 @@ _PLANTILLA = """Write a 3 to 5 line internal note for a risk analyst.
 Use ONLY these facts. Do not add information, estimates, or recommendations
 that are not here. Do not repeat the numbers as a list: write prose.
 
+Write every amount EXACTLY as given (e.g. "$4,262,000"). Do NOT reformat,
+round, or rescale it -- never turn it into "4.262 million" or similar.
+
 {hechos}"""
 
 # Etiqueta de ruteo en ingles para la nota; el valor interno (v.ruteo) no cambia.
 _RUTEO_EN = {"LEGALES": "LEGAL", "REFINANCIACION": "REFINANCE", "COBRANZAS": "COLLECTIONS"}
+
+# Nombres legibles de cada tipo de contradiccion -- los identificadores internos
+# (titular_garantia, etc.) no deben filtrarse a la prosa de la nota.
+_TIPO_EN = {
+    "titular_garantia": "collateral holder mismatch",
+    "matricula_distinta": "registry number mismatch",
+    "cuotas_no_coinciden": "installment count mismatch",
+    "tasacion_vencida": "expired appraisal",
+    "domicilio_distinto": "address mismatch",
+}
 
 
 def hechos_de(v: Veredicto) -> dict:
@@ -44,7 +57,9 @@ def hechos_de(v: Veredicto) -> dict:
                     "reason": v.motivo}
 
     if d.get("descubierto") is not None:
-        hechos["shortfall"] = f"${d['descubierto']:,.0f}".replace(",", ".")
+        # Formato ingles sin ambiguedad ("$4,262,000"): la coma agrupa miles y
+        # no hay palabra de escala que el modelo pueda malinterpretar.
+        hechos["shortfall"] = f"${d['descubierto']:,.0f}"
     if d.get("cobertura") is not None:
         hechos["collateral_coverage"] = f"{d['cobertura']:.0%}"
     if d.get("puntualidad") is not None:
@@ -52,7 +67,8 @@ def hechos_de(v: Veredicto) -> dict:
 
     if v.hallazgos:
         hechos["contradictions"] = [
-            {"type": h.tipo, "severity": h.gravedad, "state": h.estado}
+            {"type": _TIPO_EN.get(h.tipo, h.tipo), "severity": h.gravedad,
+             "state": h.estado}
             for h in v.hallazgos
         ]
     reservas = [a.motivo for a in v.advertencias if a.degrada]
