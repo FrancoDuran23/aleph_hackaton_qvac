@@ -12,6 +12,19 @@ y rutear el caso.
 Para una cartera crediticia eso no es una preferencia técnica: es la diferencia
 entre poder usar la herramienta y no poder.
 
+## Dónde ocurre la inferencia
+
+Todo corre local con el SDK de QVAC. Enlaces directos a las líneas donde se llama
+al SDK:
+
+- **Generación de texto — `completion()`** → [`riesgo/llm.py#L242-L249`](https://github.com/FrancoDuran23/aleph_hackaton_qvac/blob/58d217e468e5ff832b85bd8c6646e72b40ea2ba9/riesgo/llm.py#L242-L249)
+- **OCR — carga del modelo `OCR_LATIN`** → [`riesgo/ocr.py#L131-L133`](https://github.com/FrancoDuran23/aleph_hackaton_qvac/blob/58d217e468e5ff832b85bd8c6646e72b40ea2ba9/riesgo/ocr.py#L131-L133)
+- **OCR — inferencia `ocr_stream()`** → [`riesgo/ocr.py#L145`](https://github.com/FrancoDuran23/aleph_hackaton_qvac/blob/58d217e468e5ff832b85bd8c6646e72b40ea2ba9/riesgo/ocr.py#L145)
+
+Enlaces fijados al commit `58d217e` del tag **`v1.7-motor`**, para que el código
+enlazado sea exactamente el que produjo los números del video (no a `main`, que
+se mueve).
+
 ```
 CLIENTE 4471 — Juan Perez
 Disparo: 32 dias de atraso
