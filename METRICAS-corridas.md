@@ -186,7 +186,7 @@ Descarga: 600M ~0.4 GB, 1.7B ~1.0 GB, healthcare ~1.0 GB. Máquina sin GPU.*
    negativa dentro del propio catálogo de QVAC.
 
 **Conclusión:** el 1.7B instruct genérico le gana al chico en acierto y al
-médico en confiabilidad. Resultados crudos en `comparativa_modelos.json`.
+médico en confiabilidad. Resultados crudos en `resultados/comparativa_modelos.json`.
 
 ---
 
@@ -196,6 +196,6 @@ médico en confiabilidad. Resultados crudos en `comparativa_modelos.json`.
   el SDK 0.17.1 (`llm.py`: `connect()` y `await completion`), en `main` (PR #1).
 - El fix de contradicciones por confianza de OCR está en `main` (PR #2).
 - Detector A/B, la persistencia del crudo (`--guardar`) y la auditoría
-  (`auditoria_ocr.py`) van en este PR, sobre el schema de alertas de `main`.
+  (`proceso/auditoria_ocr.py`) van en este PR, sobre el schema de alertas de `main`.
 - La comparativa de modelos (sección 5) corre con `comparar_modelos.py`
-  (harness en `main`, commit `eab5013`); crudos en `comparativa_modelos.json`.
+  (harness en `main`, commit `eab5013`); crudos en `resultados/comparativa_modelos.json`.

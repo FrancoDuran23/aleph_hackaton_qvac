@@ -265,9 +265,33 @@ diferencia entre pedir JSON y garantizarlo.
 
 ## Documentos
 
+**Los resultados, en orden de importancia:**
+
 | | |
 |---|---|
-| [`SDD-mi-parte.md`](SDD-mi-parte.md) | diseño del motor: extracción, contradicciones, ruteo |
-| [`SDD-2.md`](SDD-2.md) | decisiones y correcciones posteriores |
-| [`METRICAS.md`](METRICAS.md) | todo lo medido, con el comando que lo reproduce |
-| [`onboarding-equipo.md`](onboarding-equipo.md) | para sumarse al proyecto |
+| [`METRICAS-corridas.md`](METRICAS-corridas.md) | las corridas reales del pipeline completo |
+| [`COMPARATIVA-MODELOS.md`](COMPARATIVA-MODELOS.md) | cuatro variantes medidas, y el límite que destapó |
+| [`HALLAZGOS-franco.md`](HALLAZGOS-franco.md) | los bugs que enseñan algo, y el feedback del SDK |
+| [`METRICAS.md`](METRICAS.md) | cada número con el comando que lo reproduce |
+
+**Cómo llegamos acá** — diseño y decisiones, en [`proceso/`](proceso/):
+los SDD por etapa y el script de auditoría de OCR.
+[`onboarding-equipo.md`](onboarding-equipo.md) para sumarse al proyecto.
+
+## Reproducir los números
+
+```bash
+python gen_dataset.py --n 20 --seed 99 --out ./dataset99
+python -m riesgo.evaluar --real --dataset dataset99
+```
+
+El generador del dataset está en el repo, el ground truth lo produce código —
+no hay etiquetado humano — y la inferencia es determinista (`temp=0`,
+`seed=7`). Regenerar con la misma semilla da el mismo `ground_truth.json` bit a
+bit, y re-correr da los mismos resultados: verificado byte a byte incluso con
+la máquina bajo carga.
+
+⚠️ **Reproducible no es representativo.** Cualquiera puede verificar que estos
+números son reales; nadie puede verificar que un contrato sintético se parezca
+a uno de banco. Por eso descartamos un chequeo que habría dado 100% contra
+nuestro propio generador: habría medido el generador, no el sistema.
