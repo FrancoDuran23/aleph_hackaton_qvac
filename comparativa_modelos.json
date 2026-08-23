@@ -1,0 +1,50 @@
+[
+  {
+    "modelo": "QWEN3_600M_INST_Q4",
+    "casos": 5,
+    "campos_ok": 20,
+    "campos_total": 25,
+    "json_ok": 5,
+    "alucinaciones": 0,
+    "segundos": [
+      5.861579999967944,
+      4.884166000003461,
+      5.318873900047038,
+      4.405538199993316,
+      4.617715100001078
+    ],
+    "error": null
+  },
+  {
+    "modelo": "QWEN3_1_7B_INST_Q4",
+    "casos": 5,
+    "campos_ok": 22,
+    "campos_total": 25,
+    "json_ok": 5,
+    "alucinaciones": 0,
+    "segundos": [
+      6.772258399985731,
+      7.032723399985116,
+      7.09323730005417,
+      6.689327000000048,
+      6.476993800024502
+    ],
+    "error": null
+  },
+  {
+    "modelo": "HEALTHCARE_1_7B_MEDICAL_Q4_K_M",
+    "casos": 5,
+    "campos_ok": 22,
+    "campos_total": 25,
+    "json_ok": 5,
+    "alucinaciones": 5,
+    "segundos": [
+      7.135731999995187,
+      8.54493320005713,
+      7.264334200008307,
+      7.004225500044413,
+      7.717674900020938
+    ],
+    "error": null
+  }
+]

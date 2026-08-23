@@ -154,6 +154,42 @@ equivocadas en ambos sets.
 
 ---
 
+## 5. Comparativa de modelos (`comparar_modelos.py`, dev set)
+
+Por qué elegimos el modelo que elegimos, **medido** — no por default. Tres
+modelos que responden tres preguntas distintas, no cinco variantes del mismo.
+Solo extracción del `contrato.pdf` (nativo, sin OCR): aísla la calidad del
+modelo sin mezclarla con la del OCR. Mismo prompt, misma semilla, temp 0 —
+cambia **solo** el modelo. 5 casos del dev set.
+
+| Modelo | Params | Campos correctos | JSON válido | Alucinación | seg/caso |
+|---|---|---|---|---|---|
+| `QWEN3_600M_INST_Q4` | 0.6B | 20/25 · **80%** | 5/5 · 100% | 0/25 · **0%** | **5.0** |
+| `QWEN3_1_7B_INST_Q4` (elegido) | 1.7B | 22/25 · **88%** | 5/5 · 100% | 0/25 · **0%** | 6.8 |
+| `HEALTHCARE_1_7B_MEDICAL_Q4_K_M` | 1.7B | 22/25 · **88%** | 5/5 · 100% | **5/25 · 20%** ⚠️ | 7.5 |
+
+*Alucinación = valor emitido que **no aparece** en el documento (grounding falla).
+Descarga: 600M ~0.4 GB, 1.7B ~1.0 GB, healthcare ~1.0 GB. Máquina sin GPU.*
+
+**Lectura — las tres preguntas, respondidas:**
+
+1. **¿Alcanza con el más chico (600M)?** Casi, pero no: 80% vs 88%. Pierde 2
+   campos de 25 contra el candidato, a cambio de ser ~25% más rápido. No
+   alucina. Plan B razonable; el 1.7B acierta más por poca latencia extra.
+2. **El candidato (1.7B):** mejor acierto (88%), 0% alucinación, 100% JSON
+   válido. Es la elección correcta.
+3. **Fine-tune médico vs instruct genérico, mismo tamaño y familia:** **mismo
+   acierto (88%) pero 20% de alucinación** (5 valores inventados) contra **0%**
+   del genérico. Especializar en otro dominio no mejora y **degrada la
+   confiabilidad** — mete valores fuera del texto. Para riesgo crediticio,
+   alucinar montos es inaceptable. Evidencia de transferencia de dominio
+   negativa dentro del propio catálogo de QVAC.
+
+**Conclusión:** el 1.7B instruct genérico le gana al chico en acierto y al
+médico en confiabilidad. Resultados crudos en `comparativa_modelos.json`.
+
+---
+
 ## Notas
 
 - El path `--real` (extracción con modelo) requirió fixes de compatibilidad con
@@ -161,3 +197,5 @@ equivocadas en ambos sets.
 - El fix de contradicciones por confianza de OCR está en `main` (PR #2).
 - Detector A/B, la persistencia del crudo (`--guardar`) y la auditoría
   (`auditoria_ocr.py`) van en este PR, sobre el schema de alertas de `main`.
+- La comparativa de modelos (sección 5) corre con `comparar_modelos.py`
+  (harness en `main`, commit `eab5013`); crudos en `comparativa_modelos.json`.
