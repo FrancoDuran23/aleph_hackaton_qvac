@@ -108,9 +108,10 @@ semilla, que el sistema nunca vio.
 | | desarrollo | **holdout (seed 99)** |
 |---|---|---|
 | Escrituras escaneadas | 6/20 | **12/20** |
-| Cobertura (casos FIRMES) | 70% | **40%** |
-| **Precisión sobre FIRMES** | **14/14** | **8/8** |
+| Cobertura (casos FIRMES) | 75% | **40%** |
+| **Precisión sobre FIRMES** | **15/15** | **8/8** |
 | Errores silenciosos | 0 | **0** |
+| Exactitud global | 17/20 | 18/20 |
 
 **La cobertura sigue al input; la precisión no se mueve.**
 
