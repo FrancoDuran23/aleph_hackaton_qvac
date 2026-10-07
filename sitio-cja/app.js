@@ -18,13 +18,17 @@
   $('cWeb').textContent=D.contacto.web; $('cWeb').href='https://'+D.contacto.web;
 
   /* ---------- Geometría (metros) ---------- */
-  const B=1.5, T=0.75, H=3.12, Z0=0.10, POST=4.0, PD=2.35, N=22;
+  // Según el modelo SketchUp: tarima 3×3, hilos desde el perímetro que convergen con giro en un cuello
+  // angosto bajo el marco; marco superior 1,50×1,50 con diagonales en X, colgado de un cable entre los dos postes.
+  const B=1.5, T=0.75, Z0=0.10, POST=4.0, PD=2.35, N=26;
+  const NECK_R=0.16, NECK_Z=2.95, H=3.35, HANG_Z=3.92, TW=0.36;
   function perim(u,s,rot,z){u=((u%1)+1)%1;const k=u*4,side=Math.floor(k),f=k-side;let x,y;
     if(side===0){x=-s+2*s*f;y=-s}else if(side===1){x=s;y=-s+2*s*f}else if(side===2){x=s-2*s*f;y=s}else{x=-s;y=s-2*s*f}
     const c=Math.cos(rot),sn=Math.sin(rot);return [x*c-y*sn,x*sn+y*c,z];}
-  const strings=[];for(let side=0;side<4;side++)for(let i=0;i<N;i++){const u=(side+i/N)/4;strings.push([perim(u,B,0,Z0),perim(u+0.125,T,Math.PI/4,H)]);}
+  const neckPt=u=>[NECK_R*Math.cos(2*Math.PI*u),NECK_R*Math.sin(2*Math.PI*u),NECK_Z];
+  const strings=[];for(let side=0;side<4;side++)for(let i=0;i<N;i++){const u=(side+i/N)/4;strings.push([perim(u,B,0,Z0),neckPt(u+TW)]);}
   const sq=(s,rot,z)=>[0,.25,.5,.75].map(u=>perim(u,s,rot,z));
-  const base=sq(B,0,Z0),baseLow=sq(B,0,0),top=sq(T,Math.PI/4,H),topUp=sq(T,Math.PI/4,H+0.3);
+  const base=sq(B,0,Z0),baseLow=sq(B,0,0),top=sq(T,Math.PI/4,H);
   const posts=[[PD,-PD],[-PD,PD]];
   const quadXZ=(x0,x1,y,z0,z1)=>[[x0,y,z0],[x1,y,z0],[x1,y,z1],[x0,y,z1]];
   const lerp3=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
@@ -48,8 +52,8 @@
   // franja frontal de tarima
   SPOT[13]={q:[[-B,-B,0],[B,-B,0],[B,-B,Z0],[-B,-B,Z0]],anchor:[0,-B,Z0/2],kind:'strip'};
   // extras: anclados a un costado (láminas y remeras no están sobre la obra)
-  SPOT[14]={q:null,anchor:[-4.1,2.4,1.1],kind:'float'};
-  SPOT[15]={q:null,anchor:[4.1,2.4,0.9],kind:'float'};
+  SPOT[14]={q:null,anchor:[-4.4,3.3,1.3],kind:'float'};
+  SPOT[15]={q:null,anchor:[4.4,3.3,1.0],kind:'float'};
 
   /* ---------- Canvas ---------- */
   const cv=$('cv'),ctx=cv.getContext('2d'),stage=$('stage');
@@ -79,17 +83,26 @@
     // postes (+ vinilos 11 y 12)
     posts.forEach(([x,y],i)=>{const num=i===0?11:12;ctx.beginPath();line([x,y,0],[x,y,POST]);ctx.lineWidth=Math.max(3,W*0.007);ctx.strokeStyle=night?'#1b2740':'#2b2a28';ctx.stroke();
       ctx.beginPath();line([x,y,1.2],[x,y,3.2]);ctx.lineWidth=Math.max(5,W*0.011);ctx.strokeStyle=sel.has(num)||focus===num?'#C8135E':(byN.get(num).estado==='reservado'?'#C98A12':(byN.get(num).estado==='confirmado'?'#4a4642':(night?'#243352':'#d9d4cb')));ctx.stroke();});
+    // cable entre postes (pasa sobre el centro), tensor colgante y riendas a tierra
     ctx.beginPath();ctx.lineWidth=1;ctx.setLineDash([4,5]);
-    line([PD,-PD,POST],top[0]);line([PD,-PD,POST],top[1]);line([-PD,PD,POST],top[2]);line([-PD,PD,POST],top[3]);
+    line([PD,-PD,POST],[0,0,HANG_Z]);line([0,0,HANG_Z],[-PD,PD,POST]);line([0,0,HANG_Z],[0,0,H]);
     line([PD,-PD,POST],[PD*1.6,-PD*1.6,0]);line([-PD,PD,POST],[-PD*1.6,PD*1.6,0]);
     ctx.strokeStyle=night?'rgba(180,215,255,.35)':'rgba(27,26,25,.45)';ctx.stroke();ctx.setLineDash([]);
+    // hilos: del perímetro de la tarima al cuello, con giro
     ctx.beginPath();strings.forEach(([a,b])=>line(a,b));
-    if(night){ctx.shadowColor=`rgba(63,166,242,${0.9*pulse})`;ctx.shadowBlur=14;ctx.strokeStyle=`rgba(190,228,255,${0.55+0.3*pulse})`;ctx.lineWidth=1.1;}
-    else{ctx.strokeStyle='rgba(27,26,25,.35)';ctx.lineWidth=0.8;}
+    if(night){ctx.shadowColor=`rgba(63,166,242,${0.9*pulse})`;ctx.shadowBlur=14;ctx.strokeStyle=`rgba(190,228,255,${0.55+0.3*pulse})`;ctx.lineWidth=1;}
+    else{ctx.strokeStyle='rgba(27,26,25,.42)';ctx.lineWidth=0.8;}
     ctx.stroke();ctx.shadowBlur=0;
-    ctx.beginPath();poly(base);poly(top);poly(topUp);for(let i=0;i<4;i++)line(top[i],topUp[i]);
+    // cuello: haz de hilos que sube hasta el marco
+    const nA=proj([0,0,NECK_Z]),nB=proj([0,0,H]);const c0=Math.cos(theta),s0=Math.sin(theta);
+    const wA=Math.hypot(...((p,q)=>[p[0]-q[0],p[1]-q[1]])(proj([NECK_R*c0,-NECK_R*s0,NECK_Z]),proj([-NECK_R*c0,NECK_R*s0,NECK_Z])));
+    ctx.beginPath();ctx.moveTo(nA[0],nA[1]);ctx.lineTo(nB[0],nB[1]);ctx.lineWidth=Math.max(3,wA);ctx.lineCap='butt';
+    if(night){ctx.shadowColor=`rgba(120,200,255,${pulse})`;ctx.shadowBlur=18;ctx.strokeStyle=`rgba(200,232,255,${0.7+0.2*pulse})`;}else{ctx.strokeStyle='rgba(27,26,25,.75)';}
+    ctx.stroke();ctx.shadowBlur=0;
+    // tarima iluminada y marco superior con diagonales en X
+    ctx.beginPath();poly(base);poly(top);line(top[0],top[2]);line(top[1],top[3]);
     if(night){ctx.shadowColor=`rgba(120,200,255,${pulse})`;ctx.shadowBlur=22;ctx.strokeStyle='#eaf6ff';ctx.lineWidth=2.4;}
-    else{ctx.strokeStyle='#1B1A19';ctx.lineWidth=2;}
+    else{ctx.strokeStyle='#1B1A19';ctx.lineWidth=2.2;}
     ctx.stroke();ctx.shadowBlur=0;
     const p0=proj([0.4,0.2,Z0]),p1=proj([0.4,0.2,Z0+1.7]);
     ctx.beginPath();ctx.moveTo(p0[0],p0[1]);ctx.lineTo(p1[0],p1[1]);ctx.lineWidth=2.5;ctx.strokeStyle=night?'#0a0f1c':'#C8135E';ctx.stroke();
