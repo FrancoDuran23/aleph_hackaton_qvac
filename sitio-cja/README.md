@@ -51,7 +51,7 @@ actividad desde $3 M).
 - **Cloudflare Pages**: igual, output directory `sitio-cja`.
 - **GitHub Pages**: Settings → Pages → carpeta `/sitio-cja` (o mover el contenido a la raíz).
 
-Para el QR de la placa física usá la URL final del deploy.
+La placa física de la obra lista a los sponsors; esta página es su espejo digital.
 
 ## Pendientes
 
