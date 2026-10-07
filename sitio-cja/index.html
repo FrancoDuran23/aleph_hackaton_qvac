@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tu marca en la luz · Comisión de Jóvenes Arquitectos Jujuy</title>
+<meta name="description" content="15 lugares para sponsors en la estructura de luz de la Semana de la Arquitectura 2026, Parque Xibi-Xibi, San Salvador de Jujuy. Elegí tu lugar y quedá en cada foto.">
+<meta property="og:title" content="Tu marca en la luz · Semana de la Arquitectura 2026">
+<meta property="og:description" content="Elegí uno de los 15 lugares sobre la estructura de luz del Parque Xibi-Xibi. 3 días en el parque, para siempre en las fotos.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23C8135E'/%3E%3Ctext x='16' y='22' font-family='Arial' font-weight='700' font-size='15' fill='white' text-anchor='middle'%3Ecja%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<nav class="nav" aria-label="Principal">
+  <div class="wrap">
+    <a class="brand" href="#top"><span class="cja">cja<i>.</i></span><small>Comisión de Jóvenes Arquitectos · Jujuy</small></a>
+    <ul>
+      <li><a href="#lugares">Lugares</a></li>
+      <li><a href="#como">Cómo funciona</a></li>
+      <li><a href="#donde">Dónde aparecés</a></li>
+      <li><a href="#comision">La comisión</a></li>
+      <li><a href="#faq">Preguntas</a></li>
+    </ul>
+    <a class="btn small" href="#lugares">Elegir un lugar</a>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="pill"><span class="dot"></span><span id="pillText">Reservas abiertas · 15 lugares</span></div>
+    <h1>Tu marca, <em>al lado de la luz.</em></h1>
+    <p class="lede">La Comisión de Jóvenes Arquitectos monta una estructura de luz en el Parque Xibi-Xibi durante la Semana de la Arquitectura. Está tres días en el parque. Las fotos quedan para siempre. Elegí tu lugar sobre la obra y aparecé en cada una.</p>
+    <div class="hero-ctas">
+      <a class="btn" href="#lugares">Ver los 15 lugares</a>
+      <a class="btn ghost" href="#como">Cómo funciona</a>
+    </div>
+    <dl class="stats">
+      <div><dt>Fechas</dt><dd id="statFechas">04 al 06 de noviembre</dd></div>
+      <div><dt>Lugar</dt><dd>Parque Xibi-Xibi, S. S. de Jujuy</dd></div>
+      <div><dt>Disponibles</dt><dd id="statDisp">—</dd></div>
+      <div><dt>Cierre de reservas</dt><dd id="statCierre">—</dd></div>
+    </dl>
+  </div>
+</header>
+
+<section class="config" id="lugares">
+  <div class="wrap config-grid">
+    <div class="stage-col">
+      <div class="stage" id="stage">
+        <canvas id="cv" aria-label="Estructura de luz con los lugares numerados para sponsors. Arrastrá para girar, tocá un número para elegirlo."></canvas>
+        <div class="stage-ui">
+          <div class="toggle" role="group" aria-label="Momento del día">
+            <button type="button" id="btnDay" aria-pressed="true">Día</button>
+            <button type="button" id="btnNight" aria-pressed="false">Noche</button>
+          </div>
+          <div class="views" role="group" aria-label="Vista">
+            <button type="button" class="chip" data-view="foto">Vista foto</button>
+            <button type="button" class="chip" data-view="atras">Desde atrás</button>
+            <button type="button" class="chip" data-view="giro">Girar</button>
+          </div>
+        </div>
+        <div class="stage-foot"><span><b>Arrastrá</b> para girar · <b>tocá un número</b> para elegirlo</span><span id="stageMode">Elemento escultórico</span></div>
+      </div>
+      <div class="legend">
+        <span><i class="st disponible"></i>Disponible</span>
+        <span><i class="st reservado"></i>Reservado</span>
+        <span><i class="st confirmado"></i>Confirmado</span>
+        <span><i class="st sel"></i>Tu selección</span>
+      </div>
+    </div>
+
+    <aside class="panel" id="panel">
+      <div class="panel-head">
+        <span class="eyebrow">Lugares sobre la obra</span>
+        <h2>Elegí dónde <em>querés estar.</em></h2>
+        <p class="muted">Tocá un número en la estructura o en la lista. Podés combinar varios lugares.</p>
+      </div>
+      <div class="detail" id="detail" hidden></div>
+      <div class="zone-tabs" id="zoneTabs" role="tablist" aria-label="Zonas"></div>
+      <ol class="spot-list" id="spotList"></ol>
+      <div class="cart" id="cart">
+        <div class="cart-row"><span>Tu selección</span><b id="cartCount">0 lugares</b></div>
+        <div class="cart-row small"><span>Inversión de referencia</span><b id="cartTotal">—</b></div>
+        <button type="button" class="btn full" id="cartGo" disabled>Reservar mi selección</button>
+        <p class="tiny">Sin compromiso. Te escribimos para confirmar lugar, formato del logo y forma de pago (hasta 3, 6 o 12 cuotas, según el brochure COPAUJ 2026).</p>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<section class="how" id="como">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Cómo funciona</span>
+      <h2>Tres pasos, <em>una obra en la ciudad.</em></h2>
+    </div>
+    <ol class="steps">
+      <li><span class="num">1</span><h3>Elegí tu lugar</h3><p>Quince lugares sobre la estructura y a su alrededor: banners laterales, fondo, postes, frente de tarima, láminas de tesis y remeras del equipo. Cada uno tiene medida, visibilidad y precio de referencia.</p></li>
+      <li><span class="num">2</span><h3>Reservalo</h3><p>Nos mandás tu selección por mail o WhatsApp. Te confirmamos disponibilidad, te pedimos el logo en vector y acordamos la forma de aporte: dinero, productos, servicios o una combinación.</p></li>
+      <li><span class="num">3</span><h3>Quedás en la foto</h3><p>Imprimimos tu logo en vinilo o lona, lo montamos el 3 de noviembre y durante tres días la obra se fotografía de día y de noche. Después queda en esta página, con QR desde la placa física.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section class="where" id="donde">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Dónde aparecés</span>
+      <h2>No es un logo en un banner. <em>Es estar dentro de la obra.</em></h2>
+      <p class="muted">La estructura se recorre, se atraviesa y se fotografía desde todos lados. Esto es lo que circula después.</p>
+    </div>
+    <div class="where-grid">
+      <article><span class="k">De día</span><h3>Escultura en el parque</h3><p>Durante el día la estructura funciona como elemento escultórico. Las fotos de frente toman los dos laterales y la franja de tarima.</p></article>
+      <article class="night"><span class="k">De noche</span><h3>La luz encendida</h3><p>Con la iluminación LED la obra cambia de identidad. Las fotos nocturnas son las que más se comparten: ahí entra el fondo y los postes.</p></article>
+      <article><span class="k">Redes y prensa</span><h3>Difusión del Colegio</h3><p>Cobertura en las redes del Colegio de Arquitectos y de la Comisión, registro fotográfico y audiovisual profesional, difusión en medios locales.</p></article>
+      <article><span class="k">Placa digital</span><h3>Esta página</h3><p>La placa física lleva un QR a esta página. La estructura se desmonta; tu lugar en la obra queda acá, con tu logo y tu link.</p></article>
+    </div>
+  </div>
+</section>
+
+<section class="comision" id="comision">
+  <div class="wrap comision-grid">
+    <div>
+      <span class="eyebrow">La comisión</span>
+      <h2>Somos la Comisión de <em>Jóvenes Arquitectos</em> de Jujuy.</h2>
+      <p>Un espacio de participación, encuentro y promoción de la arquitectura dentro del Colegio de Profesionales de la Arquitectura de Jujuy. Nos interesa la ciudad, nos interesa la cultura, y nos interesa que las ideas se construyan.</p>
+      <p>En la Semana de la Arquitectura 2026 organizamos <b>“Arquitectura en Diálogo: Tesis, Luz y Ciudad”</b>: una intervención efímera de luz y una exposición abierta de tesis en el espacio público, con presentación de sus autoras.</p>
+      <div class="speakers"><span class="k">Arquitectas disertantes</span><div><span>Florencia Reales</span><span>Tania Camilo</span><span>Araceli Ramos</span><span>Gabriela Rueda</span><span>Florencia Pimentel</span><span>Constanza Cáceres</span></div></div>
+    </div>
+    <div class="ficha">
+      <div><dt>Proyecto</dt><dd>La luz en la Arquitectura</dd></div>
+      <div><dt>Estructura</dt><dd>Tarima 3,00 × 3,00 m · marco superior 1,50 × 1,50 m a 3,12 m · dos postes de 4,00 m · cables de acero Ø 4 mm · LED</dd></div>
+      <div><dt>Montaje</dt><dd>3 de noviembre · desmontaje al cierre</dd></div>
+      <div><dt>Organiza</dt><dd>Comisión de Jóvenes del Colegio de Arquitectos de Jujuy</dd></div>
+      <div><dt>Marco</dt><dd>Agenda COPAUJ 2026 “Arquitectura que conecta”</dd></div>
+    </div>
+  </div>
+</section>
+
+<section class="faq" id="faq">
+  <div class="wrap">
+    <div class="sec-head"><span class="eyebrow">Preguntas</span><h2>Lo que nos preguntan <em>las empresas.</em></h2></div>
+    <div class="faq-list">
+      <details open><summary>¿La estructura queda para siempre?</summary><p>No. Es una obra efímera: se monta el 3 de noviembre y se desmonta al cerrar la Semana de la Arquitectura. Lo que perdura es el registro fotográfico y audiovisual, la difusión y esta página, que lleva el QR de la placa física.</p></details>
+      <details><summary>¿En qué formato mando el logo?</summary><p>Vector (SVG, PDF o AI) o PNG con fondo transparente a alta resolución. Para postes y tarima pedimos versión en un solo color.</p></details>
+      <details><summary>¿Puedo elegir más de un lugar?</summary><p>Sí. Lo más visto es combinar un lateral con el fondo o un poste. También se puede acompañar la agenda anual del Colegio como socio anual o estratégico.</p></details>
+      <details><summary>¿Cómo se paga?</summary><p>Los aportes pueden ser económicos, en productos, servicios o merchandising, y se pueden financiar en cuotas acordadas (3, 6 o 12) según el alcance del acuerdo, como indica el brochure COPAUJ 2026.</p></details>
+      <details><summary>¿Qué pasa si el lugar que quiero ya está reservado?</summary><p>Te proponemos el más parecido disponible o te anotamos en lista de espera: una reserva no confirmada se libera después del cierre de reservas.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="contact" id="reservar">
+  <div class="wrap contact-grid">
+    <div>
+      <span class="eyebrow">Reservar</span>
+      <h2>Contanos qué lugar <em>querés.</em></h2>
+      <p>Armamos el mensaje con tu selección. Mandalo por el canal que prefieras.</p>
+      <dl class="contacts">
+        <div><dt>Email</dt><dd><a id="cMail" href="#">—</a></dd></div>
+        <div><dt>WhatsApp</dt><dd><a id="cWa" href="#" target="_blank" rel="noopener">—</a></dd></div>
+        <div><dt>Instagram</dt><dd><a id="cIg" href="#" target="_blank" rel="noopener">—</a></dd></div>
+        <div><dt>Web</dt><dd><a id="cWeb" href="#" target="_blank" rel="noopener">—</a></dd></div>
+      </dl>
+    </div>
+    <form class="composer" id="composer">
+      <label for="empresa">Empresa</label>
+      <input id="empresa" name="empresa" type="text" placeholder="Nombre de la empresa" autocomplete="organization">
+      <label for="msg">Mensaje</label>
+      <textarea id="msg" name="msg" rows="7"></textarea>
+      <div class="row">
+        <a class="btn" id="sendMail" href="#">Enviar por email</a>
+        <a class="btn wa" id="sendWa" href="#" target="_blank" rel="noopener">Enviar por WhatsApp</a>
+        <button class="btn ghost" type="submit">Copiar</button>
+        <span class="ok" id="okMsg" hidden>Copiado.</span>
+      </div>
+    </form>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="logo-cop">
+      <svg viewBox="0 0 44 44" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="3"><rect x="4" y="12" width="28" height="28"/><rect x="10" y="7" width="28" height="28"/><rect x="16" y="2" width="26" height="26" stroke="#C8135E"/></g></svg>
+      <div><b>Colegio de Profesionales<br>de la Arquitectura de Jujuy</b><small>Comisión de Jóvenes Arquitectos · cja</small></div>
+    </div>
+    <div class="foot-right">Semana de la Arquitectura 2026 · “Arquitectura en Diálogo: Tesis, Luz y Ciudad”</div>
+  </div>
+</footer>
+
+<script src="content/lugares.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
