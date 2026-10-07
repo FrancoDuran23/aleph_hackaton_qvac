@@ -48,4 +48,4 @@ Para el QR de la placa física usá la URL final del deploy.
 ## Pendientes
 
 - `og.png`: render de la estructura para la vista previa en WhatsApp e Instagram (1200 × 630).
-- Modelo GLB real cuando exista: el canvas actual es un dibujo procedimental a partir de la planta y la vista del proyecto.
+- La geometría del visor se tomó del archivo `publicidad.skp` (tarima 3×3, viga diagonal a 3,205 m, postes de 3,52 m). Si el modelo cambia, los parámetros están al inicio de `app.js`.
