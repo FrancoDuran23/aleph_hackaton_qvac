@@ -17,6 +17,7 @@ Cloudflare Pages.
 | `styles.css` | Estilos (paleta del brochure COPAUJ 2026) |
 | `app.js` | Motor 3D de la estructura, lugares numerados, panel de selección, mensaje de reserva |
 | `content/lugares.js` | **Único archivo que se edita**: evento, contacto, zonas y los 15 lugares |
+| `content/modelo.js` | Líneas de la estructura, generadas del GLB exportado de SketchUp (no editar a mano) |
 | `sponsors/` | Logos de sponsors (PNG o SVG con fondo transparente) |
 
 ## Cómo reservar o confirmar un lugar
@@ -48,4 +49,4 @@ Para el QR de la placa física usá la URL final del deploy.
 ## Pendientes
 
 - `og.png`: render de la estructura para la vista previa en WhatsApp e Instagram (1200 × 630).
-- La geometría del visor se tomó del archivo `publicidad.skp` (tarima 3×3, viga diagonal a 3,205 m, postes de 3,52 m). Si el modelo cambia, los parámetros están al inicio de `app.js`.
+- La estructura del visor sale del GLB exportado de `publicidad.skp` (tarima, viga diagonal a 3,205 m, postes de 4,00 m, cable y riendas). Los hilos no viajan en el GLB porque en SketchUp son líneas; se generan en `app.js` cada 0,20 m con la regla medida en el archivo. Si el modelo cambia, exportar de nuevo a GLB y regenerar `content/modelo.js`.

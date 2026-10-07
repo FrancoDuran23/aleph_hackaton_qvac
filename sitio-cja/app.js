@@ -18,17 +18,17 @@
   $('cWeb').textContent=D.contacto.web; $('cWeb').href='https://'+D.contacto.web;
 
   /* ---------- Geometría (metros) ---------- */
-  // Geometría leída de publicidad.skp (SketchUp 2019): tarima 3×3 m, hilos desde el perímetro a una viga
-  // diagonal de 3,00 m a 3,205 m de altura; postes de 3,52 m en la diagonal opuesta, a 2,80 m del centro,
-  // con cable entre postes, tensor colgante y riendas a tierra.
-  const B=1.5, Z0=0.11, POST=3.52, PD=1.98, RIDGE=1.5, H=3.205, HANG_Z=3.45, STEP=16;
+  // Partes rígidas (tarima, viga, postes, cable, riendas): líneas de content/modelo.js, exportadas del .skp.
+  // Hilos: del perímetro de la tarima a la viga diagonal, cada 0,20 m, con la regla medida en el archivo.
+  const B=1.5, Z0=0.11, POST=4.016, PD=1.98, RIDGE=1.5, H=3.205, HANG_Z=3.516;
+  const MODEL=(window.CJA_MODELO||[]).map(l=>({c:l[0],a:l[1],b:l[2]}));
   const ridgePt=t=>{t=Math.max(-RIDGE,Math.min(RIDGE,t));return [t/Math.SQRT2,t/Math.SQRT2,H];};
   const strings=[];
-  for(let i=0;i<=STEP;i++){const f=i/STEP;
-    strings.push([[-B+3*f,-B,Z0],ridgePt(1.8*f-1.5)]);   // frente
-    strings.push([[ B,-B+3*f,Z0],ridgePt(1.8*f+0.3)]);   // derecha
-    strings.push([[-B+3*f, B,Z0],ridgePt(1.8*f-0.3)]);   // fondo
-    strings.push([[-B,-B+3*f,Z0],ridgePt(1.8*f-2.1)]);   // izquierda
+  for(let k=0;k<14;k++){const u=-1.3+0.2*k, f=(u+1.5)/3;
+    strings.push([[u,-B,Z0],ridgePt(1.8*f-1.5)]);   // frente
+    strings.push([[ B,u,Z0],ridgePt(1.8*f+0.3)]);   // derecha
+    strings.push([[u, B,Z0],ridgePt(1.8*f-0.3)]);   // fondo
+    strings.push([[-B,u,Z0],ridgePt(1.8*f-2.1)]);   // izquierda
   }
   function perim(u,s,rot,z){u=((u%1)+1)%1;const k=u*4,side=Math.floor(k),f=k-side;let x,y;
     if(side===0){x=-s+2*s*f;y=-s}else if(side===1){x=s;y=-s+2*s*f}else if(side===2){x=s-2*s*f;y=s}else{x=-s;y=s-2*s*f}
@@ -58,8 +58,8 @@
   // franja frontal de tarima
   SPOT[13]={q:[[-B,-B,0],[B,-B,0],[B,-B,Z0],[-B,-B,Z0]],anchor:[0,-B,Z0/2],kind:'strip'};
   // extras: anclados a un costado (láminas y remeras no están sobre la obra)
-  SPOT[14]={q:null,anchor:[-5.3,2.0,1.4],kind:'float'};
-  SPOT[15]={q:null,anchor:[5.3,2.0,1.0],kind:'float'};
+  SPOT[14]={q:null,anchor:[-5.7,2.0,1.4],kind:'float'};
+  SPOT[15]={q:null,anchor:[5.7,2.0,1.0],kind:'float'};
 
   /* ---------- Canvas ---------- */
   const cv=$('cv'),ctx=cv.getContext('2d'),stage=$('stage');
@@ -86,23 +86,26 @@
     ctx.fillStyle=night?'rgba(63,166,242,.08)':'rgba(27,26,25,.05)';ctx.beginPath();poly(base);ctx.fill();
     // franja frontal (lugar 13)
     const S=SPOT[13].q.map(proj);ctx.beginPath();path2(S);ctx.fillStyle=byN.get(13).sponsor||sel.has(13)||focus===13?spotFill(13):'rgba(200,19,94,.0)';ctx.fill();ctx.lineWidth=1;ctx.strokeStyle=spotStroke(13);ctx.stroke();
-    // postes (+ vinilos 11 y 12)
-    posts.forEach(([x,y],i)=>{const num=i===0?11:12;ctx.beginPath();line([x,y,0],[x,y,POST]);ctx.lineWidth=Math.max(3,W*0.007);ctx.strokeStyle=night?'#1b2740':'#2b2a28';ctx.stroke();
-      ctx.beginPath();line([x,y,1.0],[x,y,3.0]);ctx.lineWidth=Math.max(5,W*0.011);ctx.strokeStyle=sel.has(num)||focus===num?'#C8135E':(byN.get(num).estado==='reservado'?'#C98A12':(byN.get(num).estado==='confirmado'?'#4a4642':(night?'#243352':'#d9d4cb')));ctx.stroke();});
-    // cable entre postes (pasa sobre el centro), tensor colgante y riendas a tierra
-    ctx.beginPath();ctx.lineWidth=1;ctx.setLineDash([4,5]);
-    line([PD,-PD,POST],[0,0,HANG_Z]);line([0,0,HANG_Z],[-PD,PD,POST]);line([0,0,HANG_Z],[0,0,H]);
-    line([PD,-PD,POST],[PD*1.62,-PD*1.62,0]);line([-PD,PD,POST],[-PD*1.62,PD*1.62,0]);
-    ctx.strokeStyle=night?'rgba(180,215,255,.35)':'rgba(27,26,25,.45)';ctx.stroke();ctx.setLineDash([]);
-    // hilos: del perímetro de la tarima a la viga diagonal (superficie reglada)
+    // partes rígidas del modelo
+    const stroke=(cat,style,w,dash)=>{ctx.beginPath();MODEL.forEach(l=>{if(l.c===cat)line(l.a,l.b);});ctx.lineWidth=w;ctx.strokeStyle=style;ctx.setLineDash(dash||[]);ctx.stroke();ctx.setLineDash([]);};
+    stroke('estructura',night?'rgba(180,215,255,.4)':'rgba(27,26,25,.55)',1);
+    stroke('rienda',night?'rgba(180,215,255,.35)':'rgba(27,26,25,.45)',1,[4,5]);
+    stroke('cable',night?'rgba(180,215,255,.45)':'rgba(27,26,25,.55)',1);
+    ctx.beginPath();MODEL.forEach(l=>{if(l.c==='viga'&&l.a[2]>3.35)line(l.a,l.b);});ctx.lineWidth=1;ctx.strokeStyle=night?'rgba(180,215,255,.45)':'rgba(27,26,25,.55)';ctx.stroke();
+    stroke('poste',night?'#1b2740':'#2b2a28',Math.max(3,W*0.006));
+    // vinilos de los postes (lugares 11 y 12)
+    posts.forEach(([x,y],i)=>{const num=i===0?11:12;ctx.beginPath();line([x,y,1.0],[x,y,3.0]);ctx.lineWidth=Math.max(5,W*0.011);ctx.strokeStyle=sel.has(num)||focus===num?'#C8135E':(byN.get(num).estado==='reservado'?'#C98A12':(byN.get(num).estado==='confirmado'?'#4a4642':(night?'#243352':'#d9d4cb')));ctx.stroke();});
+    // tensor colgante del cable a la viga
+    ctx.beginPath();line([0,0,HANG_Z],[0,0,H]);ctx.lineWidth=1;ctx.strokeStyle=night?'rgba(180,215,255,.45)':'rgba(27,26,25,.55)';ctx.stroke();
+    // hilos
     ctx.beginPath();strings.forEach(([a,b])=>line(a,b));
     if(night){ctx.shadowColor=`rgba(63,166,242,${0.9*pulse})`;ctx.shadowBlur=14;ctx.strokeStyle=`rgba(190,228,255,${0.55+0.3*pulse})`;ctx.lineWidth=1;}
     else{ctx.strokeStyle='rgba(27,26,25,.45)';ctx.lineWidth=0.8;}
     ctx.stroke();ctx.shadowBlur=0;
     // tarima iluminada y viga superior
-    ctx.beginPath();poly(base);line(ridgePt(-RIDGE),ridgePt(RIDGE));
-    if(night){ctx.shadowColor=`rgba(120,200,255,${pulse})`;ctx.shadowBlur=22;ctx.strokeStyle='#eaf6ff';ctx.lineWidth=2.6;}
-    else{ctx.strokeStyle='#1B1A19';ctx.lineWidth=2.6;}
+    ctx.beginPath();poly(base);line(ridgePt(-RIDGE),ridgePt(RIDGE));MODEL.forEach(l=>{if(l.c==='viga'&&l.a[2]<=3.35)line(l.a,l.b);});
+    if(night){ctx.shadowColor=`rgba(120,200,255,${pulse})`;ctx.shadowBlur=22;ctx.strokeStyle='#eaf6ff';ctx.lineWidth=2.2;}
+    else{ctx.strokeStyle='#1B1A19';ctx.lineWidth=2.2;}
     ctx.stroke();ctx.shadowBlur=0;
     const p0=proj([0.4,0.2,Z0]),p1=proj([0.4,0.2,Z0+1.7]);
     ctx.beginPath();ctx.moveTo(p0[0],p0[1]);ctx.lineTo(p1[0],p1[1]);ctx.lineWidth=2.5;ctx.strokeStyle=night?'#0a0f1c':'#C8135E';ctx.stroke();
