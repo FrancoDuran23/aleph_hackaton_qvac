@@ -12,6 +12,7 @@
   $('statDisp').textContent=`${disp} de ${D.lugares.length}`;
   $('statCierre').textContent=D.evento.cierreReservas; $('statFechas').textContent=D.evento.fechas;
   $('pillText').textContent=`Reservas abiertas · ${disp} lugares disponibles`;
+  const cN=$('cNombre');if(cN){cN.hidden=!D.contacto.nombre;cN.querySelector('dd').textContent=D.contacto.nombre||'';}
   $('cMail').textContent=D.contacto.email; $('cMail').href='mailto:'+D.contacto.email;
   $('cWa').textContent=D.contacto.telefono; $('cWa').href='https://wa.me/'+D.contacto.whatsapp;
   $('cIg').textContent='@'+D.contacto.instagram; $('cIg').href='https://www.instagram.com/'+D.contacto.instagram;
@@ -40,26 +41,16 @@
   const lerp3=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
   const subQuad=(c,u0,u1,v0,v1)=>{const b0=lerp3(c[0],c[1],u0),b1=lerp3(c[0],c[1],u1),t0=lerp3(c[3],c[2],u0),t1=lerp3(c[3],c[2],u1);return [lerp3(b0,t0,v0),lerp3(b1,t1,v0),lerp3(b1,t1,v1),lerp3(b0,t0,v1)];};
   const center=c=>[(c[0][0]+c[2][0])/2,(c[0][1]+c[2][1])/2,(c[0][2]+c[2][2])/2];
-  // Banners
+  // Banners junto a los postes (croquis de la arquitecta): lonas horizontales 2,00 × 1,00 m, 4 lugares cada una
   const BAN={
-    izq:{c:quadXZ(-3.95,-3.10,-1.0,0.05,2.25),vert:true,slots:[1,2,3]},
-    der:{c:quadXZ(3.10,3.95,-1.0,0.05,2.25),vert:true,slots:[4,5,6]},
-    fondo:{c:quadXZ(-2.0,2.0,3.6,0.7,1.9),vert:false,slots:[7,8,9,10]}
+    frontal:  {c:quadXZ( 2.35, 4.35,-2.35,0.55,1.55),vert:false,slots:[1,2,3,4]},
+    posterior:{c:quadXZ(-4.35,-2.35, 2.35,0.55,1.55),vert:false,slots:[5,6,7,8]},
+    tesis:    {c:quadXZ( 2.8, 4.8, 3.9,0.55,1.55),vert:false,slots:[9,10,11,12]}
   };
-  // Lugares: cuadrilátero 3D de cada uno (para pintar y para el marcador)
   const SPOT={};
-  for(const id in BAN){const b=BAN[id],n=b.slots.length;b.slots.forEach((num,i)=>{let q;
-    if(b.vert){const h=0.82/n,v1=0.85-i*h,v0=v1-h+0.035;q=subQuad(b.c,0.08,0.92,v0,v1);}
-    else{const w=0.94/n,u0=0.03+i*w,u1=u0+w-0.02;q=subQuad(b.c,u0,u1,0.12,0.78);}
+  for(const id in BAN){const b=BAN[id],n=b.slots.length;b.slots.forEach((num,i)=>{
+    const w=0.94/n,u0=0.03+i*w,u1=u0+w-0.02;const q=subQuad(b.c,u0,u1,0.12,0.78);
     SPOT[num]={q,anchor:center(q),kind:'banner'};});}
-  // postes: vinilo envolvente (franja 0,32 × 2,00 desde 1,2 m)
-  SPOT[11]={q:null,anchor:[PD,-PD,2.2],kind:'post',post:[PD,-PD]};
-  SPOT[12]={q:null,anchor:[-PD,PD,2.2],kind:'post',post:[-PD,PD]};
-  // franja frontal de tarima
-  SPOT[13]={q:[[-B,-B,0],[B,-B,0],[B,-B,Z0],[-B,-B,Z0]],anchor:[0,-B,Z0/2],kind:'strip'};
-  // extras: anclados a un costado (láminas y remeras no están sobre la obra)
-  SPOT[14]={q:null,anchor:[-5.7,2.0,1.4],kind:'float'};
-  SPOT[15]={q:null,anchor:[5.7,2.0,1.0],kind:'float'};
 
   /* ---------- Canvas ---------- */
   const cv=$('cv'),ctx=cv.getContext('2d'),stage=$('stage');
@@ -84,19 +75,15 @@
     ctx.beginPath();poly(baseLow);poly(base);for(let i=0;i<4;i++)line(baseLow[i],base[i]);
     ctx.lineWidth=1;ctx.strokeStyle=night?'rgba(180,215,255,.35)':'rgba(27,26,25,.55)';ctx.stroke();
     ctx.fillStyle=night?'rgba(63,166,242,.08)':'rgba(27,26,25,.05)';ctx.beginPath();poly(base);ctx.fill();
-    // franja frontal (lugar 13)
-    const S=SPOT[13].q.map(proj);ctx.beginPath();path2(S);ctx.fillStyle=byN.get(13).sponsor||sel.has(13)||focus===13?spotFill(13):'rgba(200,19,94,.0)';ctx.fill();ctx.lineWidth=1;ctx.strokeStyle=spotStroke(13);ctx.stroke();
     // partes rígidas del modelo
     const stroke=(cat,style,w,dash)=>{ctx.beginPath();MODEL.forEach(l=>{if(l.c===cat)line(l.a,l.b);});ctx.lineWidth=w;ctx.strokeStyle=style;ctx.setLineDash(dash||[]);ctx.stroke();ctx.setLineDash([]);};
-    stroke('estructura',night?'rgba(180,215,255,.4)':'rgba(27,26,25,.55)',1);
-    stroke('rienda',night?'rgba(180,215,255,.35)':'rgba(27,26,25,.45)',1,[4,5]);
-    stroke('cable',night?'rgba(180,215,255,.45)':'rgba(27,26,25,.55)',1);
-    ctx.beginPath();MODEL.forEach(l=>{if(l.c==='viga'&&l.a[2]>3.35)line(l.a,l.b);});ctx.lineWidth=1;ctx.strokeStyle=night?'rgba(180,215,255,.45)':'rgba(27,26,25,.55)';ctx.stroke();
-    stroke('poste',night?'#1b2740':'#2b2a28',Math.max(3,W*0.006));
-    // vinilos de los postes (lugares 11 y 12)
-    posts.forEach(([x,y],i)=>{const num=i===0?11:12;ctx.beginPath();line([x,y,1.0],[x,y,3.0]);ctx.lineWidth=Math.max(5,W*0.011);ctx.strokeStyle=sel.has(num)||focus===num?'#C8135E':(byN.get(num).estado==='reservado'?'#C98A12':(byN.get(num).estado==='confirmado'?'#4a4642':(night?'#243352':'#d9d4cb')));ctx.stroke();});
+    stroke('estructura',night?'rgba(180,215,255,.3)':'rgba(27,26,25,.4)',0.8);
+    stroke('rienda',night?'rgba(180,215,255,.18)':'rgba(27,26,25,.25)',0.7,[3,6]);
+    stroke('cable',night?'rgba(180,215,255,.25)':'rgba(27,26,25,.3)',0.7);
+    ctx.beginPath();MODEL.forEach(l=>{if(l.c==='viga'&&l.a[2]>3.35)line(l.a,l.b);});ctx.lineWidth=0.7;ctx.strokeStyle=night?'rgba(180,215,255,.25)':'rgba(27,26,25,.3)';ctx.stroke();
+    stroke('poste',night?'#1a2238':'rgba(27,26,25,.55)',Math.max(2,W*0.004));
     // tensor colgante del cable a la viga
-    ctx.beginPath();line([0,0,HANG_Z],[0,0,H]);ctx.lineWidth=1;ctx.strokeStyle=night?'rgba(180,215,255,.45)':'rgba(27,26,25,.55)';ctx.stroke();
+    ctx.beginPath();line([0,0,HANG_Z],[0,0,H]);ctx.lineWidth=0.7;ctx.strokeStyle=night?'rgba(180,215,255,.25)':'rgba(27,26,25,.3)';ctx.stroke();
     // hilos
     ctx.beginPath();strings.forEach(([a,b])=>line(a,b));
     if(night){ctx.shadowColor=`rgba(63,166,242,${0.9*pulse})`;ctx.shadowBlur=14;ctx.strokeStyle=`rgba(190,228,255,${0.55+0.3*pulse})`;ctx.lineWidth=1;}
@@ -172,7 +159,7 @@
   cv.addEventListener('pointerup',e=>{if(drag&&!drag.moved){const p=pos(e);const m=[...markers].reverse().find(k=>Math.hypot(k.x-p[0],k.y-p[1])<=k.r);if(m)toggleSpot(m.n,true);}drag=null;});
   cv.addEventListener('pointercancel',()=>drag=null);
   const bD=$('btnDay'),bN=$('btnNight'),mode=$('stageMode');
-  function setNight(v){night=v;stage.classList.toggle('night',v);bD.setAttribute('aria-pressed',String(!v));bN.setAttribute('aria-pressed',String(v));mode.textContent=v?'Experiencia lumínica':'Elemento escultórico';}
+  function setNight(v){night=v;stage.classList.toggle('night',v);bD.setAttribute('aria-pressed',String(!v));bN.setAttribute('aria-pressed',String(v));mode.textContent=v?'Experiencia lumínica':'Escultura efímera';}
   bD.addEventListener('click',()=>setNight(false));bN.addEventListener('click',()=>setNight(true));
   if(!reduce)setTimeout(()=>setNight(true),3000);
   const viewBtns=[...document.querySelectorAll('[data-view]')];
@@ -185,7 +172,7 @@
   /* ---------- Panel: zonas, lista, detalle, selección ---------- */
   const zoneTabs=$('zoneTabs'),list=$('spotList'),detail=$('detail');
   let zone='all';
-  const zones=[['all','Todos'],...Object.entries(D.zonas).map(([k,z])=>[k,z.nombre.replace('Banner ','').replace('lateral ','lat. ')])];
+  const zones=[['all','Todos'],...Object.entries(D.zonas).map(([k,z])=>[k,z.corto||z.nombre])];
   zones.forEach(([k,label])=>{const b=document.createElement('button');b.type='button';b.role='tab';b.textContent=label;b.setAttribute('aria-selected',String(k===zone));b.addEventListener('click',()=>{zone=k;zoneTabs.querySelectorAll('button').forEach(x=>x.setAttribute('aria-selected',String(x===b)));renderList();});zoneTabs.appendChild(b);});
   function renderList(){list.innerHTML='';D.lugares.filter(l=>zone==='all'||l.zona===zone).forEach(l=>{
     const li=document.createElement('li');const b=document.createElement('button');b.type='button';b.className='spot '+l.estado+(sel.has(l.n)?' sel':'')+(taken(l)?' taken':'');b.id='spot-'+l.n;
@@ -226,6 +213,7 @@
   renderList();renderCart();
 
   /* ---------- Nav activo ---------- */
+  document.querySelectorAll('[data-count]').forEach(el=>el.textContent=el.textContent.replace(/\d+/,String(D.lugares.length)));
   const links=[...document.querySelectorAll('.nav ul a')];
   if('IntersectionObserver' in window){const so=new IntersectionObserver(es=>es.forEach(x=>{if(x.isIntersecting)links.forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+x.target.id));}),{rootMargin:'-35% 0px -55% 0px'});
     links.forEach(a=>{const s=document.querySelector(a.getAttribute('href'));if(s)so.observe(s);});}

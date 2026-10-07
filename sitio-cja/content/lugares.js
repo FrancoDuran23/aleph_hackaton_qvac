@@ -19,6 +19,7 @@ window.CJA = {
     cierreReservas: "25 de octubre"
   },
   contacto: {
+    nombre: "",                       // quién atiende a los sponsors (ej. "Agus Liquin"); vacío = no se muestra
     email: "colarqjuy@gmail.com",
     telefono: "+54 388 498-8578",
     whatsapp: "543884988578",
@@ -26,28 +27,22 @@ window.CJA = {
     web: "arquitectosjujuy.org.ar"
   },
   zonas: {
-    izq:    { nombre: "Banner lateral izquierdo", medida: "Roll-up 0,85 × 2,20 m", donde: "A la izquierda de la tarima, 0,20 m por delante", foto: "En toda foto de frente y en tres cuartos" },
-    der:    { nombre: "Banner lateral derecho",   medida: "Roll-up 0,85 × 2,20 m", donde: "A la derecha de la tarima, 0,20 m por delante",  foto: "En toda foto de frente y en tres cuartos" },
-    fondo:  { nombre: "Banner de fondo",          medida: "Lona 4,00 × 1,20 m a 1,90 m de altura", donde: "Detrás de la estructura, entre dos parantes", foto: "Detrás de la luz, en todas las fotos nocturnas" },
-    postes: { nombre: "Postes",                   medida: "Vinilo envolvente 0,32 × 2,00 m", donde: "Los dos postes de 4 m que tensan la estructura", foto: "Siempre en cuadro: son parte de la obra" },
-    tarima: { nombre: "Frente de tarima",         medida: "Franja 3,00 × 0,10 m", donde: "Canto frontal de la tarima de madera", foto: "Al pie de todas las fotos de frente" },
-    extras: { nombre: "Alrededor de la obra",     medida: "Varios", donde: "Láminas de tesis, equipo de montaje", foto: "En la exposición y en el registro del montaje" }
+    frontal:   { nombre: "Banner frontal",   corto: "Frontal",   medida: "Lona 2,00 × 1,00 m en bastidor", donde: "Junto al poste delantero, fuera de la tarima", foto: "En toda foto de frente y en tres cuartos, de día y de noche" },
+    posterior: { nombre: "Banner posterior", corto: "Posterior", medida: "Lona 2,00 × 1,00 m en bastidor", donde: "Junto al poste trasero, fuera de la tarima", foto: "Detrás de la luz en las fotos nocturnas" },
+    tesis:     { nombre: "Banner de la exposición de tesis", corto: "Tesis", medida: "Lona 2,00 × 1,00 m en bastidor", donde: "Donde se exponen las láminas de tesis (opcional)", foto: "En la exposición y en las fotos de las presentaciones" }
   },
   lugares: [
-    { n: 1,  zona: "izq",    nombre: "Lateral izquierdo · arriba",  tier: "oro",    paquete: "Socio actividad", precio: "Desde $3 M", medida: "0,70 × 0,45 m", estado: "disponible", sponsor: "", logo: "", url: "" },
-    { n: 2,  zona: "izq",    nombre: "Lateral izquierdo · medio",   tier: "plata",  paquete: "Socio evento",    precio: "Desde $1 M", medida: "0,70 × 0,45 m", estado: "disponible", sponsor: "", logo: "", url: "" },
-    { n: 3,  zona: "izq",    nombre: "Lateral izquierdo · abajo",   tier: "plata",  paquete: "Socio evento",    precio: "Desde $1 M", medida: "0,70 × 0,45 m", estado: "disponible", sponsor: "", logo: "", url: "" },
-    { n: 4,  zona: "der",    nombre: "Lateral derecho · arriba",    tier: "oro",    paquete: "Socio actividad", precio: "Desde $3 M", medida: "0,70 × 0,45 m", estado: "reservado",  sponsor: "Ejemplo S.A.", logo: "", url: "" },
-    { n: 5,  zona: "der",    nombre: "Lateral derecho · medio",     tier: "plata",  paquete: "Socio evento",    precio: "Desde $1 M", medida: "0,70 × 0,45 m", estado: "disponible", sponsor: "", logo: "", url: "" },
-    { n: 6,  zona: "der",    nombre: "Lateral derecho · abajo",     tier: "plata",  paquete: "Socio evento",    precio: "Desde $1 M", medida: "0,70 × 0,45 m", estado: "disponible", sponsor: "", logo: "", url: "" },
-    { n: 7,  zona: "fondo",  nombre: "Fondo · 1",                   tier: "oro",    paquete: "Socio actividad", precio: "Desde $3 M", medida: "0,90 × 0,80 m", estado: "disponible", sponsor: "", logo: "", url: "" },
-    { n: 8,  zona: "fondo",  nombre: "Fondo · 2",                   tier: "oro",    paquete: "Socio actividad", precio: "Desde $3 M", medida: "0,90 × 0,80 m", estado: "disponible", sponsor: "", logo: "", url: "" },
-    { n: 9,  zona: "fondo",  nombre: "Fondo · 3",                   tier: "plata",  paquete: "Socio evento",    precio: "Desde $1 M", medida: "0,90 × 0,80 m", estado: "disponible", sponsor: "", logo: "", url: "" },
-    { n: 10, zona: "fondo",  nombre: "Fondo · 4",                   tier: "bronce", paquete: "Socio evento",    precio: "Desde $1 M", medida: "0,90 × 0,80 m", estado: "disponible", sponsor: "", logo: "", url: "" },
-    { n: 11, zona: "postes", nombre: "Poste frontal",               tier: "oro",    paquete: "Socio actividad", precio: "Desde $3 M", medida: "0,32 × 2,00 m", estado: "disponible", sponsor: "", logo: "", url: "" },
-    { n: 12, zona: "postes", nombre: "Poste posterior",             tier: "plata",  paquete: "Socio evento",    precio: "Desde $1 M", medida: "0,32 × 2,00 m", estado: "disponible", sponsor: "", logo: "", url: "" },
-    { n: 13, zona: "tarima", nombre: "Franja frontal de tarima",    tier: "plata",  paquete: "Socio evento",    precio: "Desde $1 M", medida: "3,00 × 0,10 m", estado: "disponible", sponsor: "", logo: "", url: "" },
-    { n: 14, zona: "extras", nombre: "Pie de las láminas de tesis", tier: "bronce", paquete: "Socio evento",    precio: "Desde $1 M", medida: "Logo en el cajetín de las 18 láminas A2", estado: "disponible", sponsor: "", logo: "", url: "" },
-    { n: 15, zona: "extras", nombre: "Remeras del equipo de montaje", tier: "bronce", paquete: "Socio evento",  precio: "Desde $1 M", medida: "Espalda, 25 remeras", estado: "disponible", sponsor: "", logo: "", url: "" }
+    { n: 1,  zona: "frontal",   nombre: "Frontal · 1",   tier: "oro",    paquete: "Socio actividad", precio: "Desde $3 M", medida: "0,45 × 0,70 m", estado: "disponible", sponsor: "", logo: "", url: "" },
+    { n: 2,  zona: "frontal",   nombre: "Frontal · 2",   tier: "oro",    paquete: "Socio actividad", precio: "Desde $3 M", medida: "0,45 × 0,70 m", estado: "reservado",  sponsor: "Ejemplo S.A.", logo: "", url: "" },
+    { n: 3,  zona: "frontal",   nombre: "Frontal · 3",   tier: "plata",  paquete: "Socio evento",    precio: "Desde $1 M", medida: "0,45 × 0,70 m", estado: "disponible", sponsor: "", logo: "", url: "" },
+    { n: 4,  zona: "frontal",   nombre: "Frontal · 4",   tier: "plata",  paquete: "Socio evento",    precio: "Desde $1 M", medida: "0,45 × 0,70 m", estado: "disponible", sponsor: "", logo: "", url: "" },
+    { n: 5,  zona: "posterior", nombre: "Posterior · 1", tier: "oro",    paquete: "Socio actividad", precio: "Desde $3 M", medida: "0,45 × 0,70 m", estado: "disponible", sponsor: "", logo: "", url: "" },
+    { n: 6,  zona: "posterior", nombre: "Posterior · 2", tier: "oro",    paquete: "Socio actividad", precio: "Desde $3 M", medida: "0,45 × 0,70 m", estado: "disponible", sponsor: "", logo: "", url: "" },
+    { n: 7,  zona: "posterior", nombre: "Posterior · 3", tier: "plata",  paquete: "Socio evento",    precio: "Desde $1 M", medida: "0,45 × 0,70 m", estado: "disponible", sponsor: "", logo: "", url: "" },
+    { n: 8,  zona: "posterior", nombre: "Posterior · 4", tier: "plata",  paquete: "Socio evento",    precio: "Desde $1 M", medida: "0,45 × 0,70 m", estado: "disponible", sponsor: "", logo: "", url: "" },
+    { n: 9,  zona: "tesis",     nombre: "Tesis · 1",     tier: "bronce", paquete: "Socio evento",    precio: "Desde $1 M", medida: "0,45 × 0,70 m", estado: "disponible", sponsor: "", logo: "", url: "" },
+    { n: 10, zona: "tesis",     nombre: "Tesis · 2",     tier: "bronce", paquete: "Socio evento",    precio: "Desde $1 M", medida: "0,45 × 0,70 m", estado: "disponible", sponsor: "", logo: "", url: "" },
+    { n: 11, zona: "tesis",     nombre: "Tesis · 3",     tier: "bronce", paquete: "Socio evento",    precio: "Desde $1 M", medida: "0,45 × 0,70 m", estado: "disponible", sponsor: "", logo: "", url: "" },
+    { n: 12, zona: "tesis",     nombre: "Tesis · 4",     tier: "bronce", paquete: "Socio evento",    precio: "Desde $1 M", medida: "0,45 × 0,70 m", estado: "disponible", sponsor: "", logo: "", url: "" }
   ]
 };
